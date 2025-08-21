@@ -29,7 +29,6 @@ defmodule WraftDoc.CounterParties.CounterParty do
     has_many(:e_signature, WraftDoc.Documents.ESignature)
     belongs_to(:content, WraftDoc.Documents.Instance)
     belongs_to(:user, WraftDoc.Account.User)
-    belongs_to(:party_type_ref, WraftDoc.CounterParties.PartyType, foreign_key: :party_type_id)
 
     timestamps()
   end
