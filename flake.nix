@@ -1,5 +1,5 @@
 {
-  description: "Wraft development environment";
+  description = "Wraft development environment";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
