@@ -14,7 +14,7 @@ config :wraft_doc, WraftDocWeb.Endpoint,
   url: [host: "localhost"],
   render_errors: [view: WraftDocWeb.ErrorView, accepts: ~w(html json)],
   pubsub_server: WraftDoc.PubSub,
-  live_view: [signing_salt: "2B8BVDxqHCMKIa5cHoQ2lM0Ne7gUxvkb"]
+  live_view: [signing_salt: System.get_env("LIVE_VIEW_SIGNING_SALT") || "dev_live_view_signing_salt_CHANGE_ME"]
 
 config :wraft_doc, :deployement, is_self_hosted: System.get_env("SELF_HOSTED", "true") == "true"
 
