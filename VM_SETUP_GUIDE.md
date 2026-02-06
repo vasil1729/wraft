@@ -82,6 +82,20 @@ If you prefer to install manually, refer to the `Dockerfile.dev` and `Makefile` 
 6.  **Install Elixir & Erlang**:
     Use `asdf` (recommended) or your package manager to install Erlang 27.0.1 and Elixir 1.18.4.
 
+**Option C: Nix Flake (Reproducible Environment)**
+
+If you have [Nix](https://nixos.org/download.html) installed with flakes enabled, you can enter a shell with all dependencies pre-installed:
+
+```bash
+nix develop
+```
+
+Or if you use `direnv`:
+
+```bash
+direnv allow
+```
+
 ### Step 3.3: Verify Installation
 
 Run the following command to check if all versions match the requirements:
