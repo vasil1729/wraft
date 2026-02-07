@@ -49,9 +49,17 @@ if config_env() == :prod do
   host = System.get_env("PHX_HOST") || "localhost"
   port = String.to_integer(System.get_env("PORT") || "4000")
 
+  live_view_signing_salt =
+    System.get_env("LIVE_VIEW_SIGNING_SALT") ||
+      raise """
+      environment variable LIVE_VIEW_SIGNING_SALT is missing.
+      You can generate one by calling: mix phx.gen.secret
+      """
+
   config :wraft_doc, WraftDocWeb.Endpoint,
     url: [host: host, port: port],
     server: true,
+    live_view: [signing_salt: live_view_signing_salt],
     http: [
       # Enable IPv6 and bind on all interfaces.
       # Set it to  {0, 0, 0, 0, 0, 0, 0, 1} for local network only access.
