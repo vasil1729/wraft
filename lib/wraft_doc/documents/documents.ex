@@ -1662,24 +1662,41 @@ defmodule WraftDoc.Documents do
   end
 
   # Generate a Gantt chart form the given CSV file using Gnuplot CLI.
-  defp generate_gnu_gantt_chart(%Plug.Upload{filename: filename, path: path}, title) do
+  defp generate_gnu_gantt_chart(%Plug.Upload{path: path}, title) do
     File.mkdir_p("temp/gantt_chart_input/")
     File.mkdir_p("temp/gantt_chart_output/")
-    dest_path = "temp/gantt_chart_input/#{filename}"
-    System.cmd("cp", [path, dest_path])
+
+    # Use UUID for input filename to prevent path traversal from original filename
+    safe_filename = Ecto.UUID.generate()
+    dest_path = "temp/gantt_chart_input/#{safe_filename}.csv"
+    File.cp!(path, dest_path)
 
     dest_path = Path.expand(dest_path)
-    out_name = Path.expand("temp/gantt_chart_output/gantt_#{title}.svg")
+
+    # Sanitize title to prevent command injection and path traversal
+    safe_title = sanitize_filename(title)
+    out_name = Path.expand("temp/gantt_chart_output/gantt_#{safe_title}.svg")
+
+    # Sanitize title for gnuplot script injection (remove quotes and backslashes)
+    safe_title_for_script = String.replace(title, ~r/['"\\]/, "")
 
     script =
-      File.read!("lib/priv/gantt_chart/gnuplot_gantt.plt")
+      File.read!("priv/slugs/gantt_chart/gnuplot_gantt.plt")
       |> String.replace("//input//", dest_path)
       |> String.replace("//out_name//", out_name)
-      |> String.replace("//title//", title)
+      |> String.replace("//title//", safe_title_for_script)
 
-    File.write("temp/gantt_script.plt", script)
-    file_path = Path.expand("temp/gantt_script.plt")
-    System.cmd("gnuplot", ["-p", file_path])
+    # Use unique script name to avoid race conditions
+    script_path = "temp/gantt_script_#{safe_filename}.plt"
+    File.write(script_path, script)
+    file_path = Path.expand(script_path)
+
+    try do
+      System.cmd("gnuplot", ["-p", file_path])
+    after
+      File.rm(script_path)
+      File.rm(dest_path)
+    end
   end
 
   # Generate bar for gant chart
@@ -2570,5 +2587,11 @@ defmodule WraftDoc.Documents do
         })
       )
     end
+  end
+
+  defp sanitize_filename(name) do
+    name
+    |> String.replace(~r/[^a-zA-Z0-9_\-]/, "_")
+    |> String.slice(0, 100)
   end
 end
