@@ -5,7 +5,8 @@ import Config
 config :wraft_doc, WraftDocWeb.Endpoint,
   http: [ip: {127, 0, 0, 1}, port: 4001],
   server: false,
-  secret_key_base: Map.fetch!(System.get_env(), "SECRET_KEY_BASE")
+  secret_key_base: Map.fetch!(System.get_env(), "SECRET_KEY_BASE"),
+  live_view: [signing_salt: "2B8BVDxqHCMKIa5cHoQ2lM0Ne7gUxvkb"]
 
 # Print only warnings and errors during test
 config :logger, level: :warn
