@@ -578,6 +578,45 @@ defmodule WraftDoc.AccountTest do
     end
   end
 
+  @tag :authenticate
+  describe "authenticate_by_email_and_password/2" do
+    test "successfully authenticate when correct credentials are given" do
+      user = insert(:user_with_personal_organisation)
+      current_org_id = user.current_org_id
+      user_email = user.email
+
+      {:ok,
+       %{
+         tokens: [access_token: access_token, refresh_token: refresh_token],
+         user: _updated_user
+       }} = Account.authenticate_by_email_and_password(user_email, "encrypt")
+
+      {_, _, access_token_resource} = Guardian.resource_from_token(access_token)
+      {_, _, refresh_token_resource} = Guardian.resource_from_token(refresh_token)
+
+      assert refresh_token_resource["exp"] >= access_token_resource["exp"]
+
+      assert %{"organisation_id" => ^current_org_id, "sub" => ^user_email, "typ" => "access"} =
+               access_token_resource
+
+      assert %{"organisation_id" => ^current_org_id, "sub" => ^user_email, "typ" => "refresh"} =
+               refresh_token_resource
+    end
+
+    test "returns {:error, :invalid} when password is incorrect" do
+      user = insert(:user)
+      response = Account.authenticate_by_email_and_password(user.email, "wrongpassword")
+      assert response == {:error, :invalid}
+    end
+
+    test "returns {:error, :invalid} when email does not exist" do
+      response =
+        Account.authenticate_by_email_and_password("nonexistent@example.com", "password")
+
+      assert response == {:error, :invalid}
+    end
+  end
+
   describe "refresh_token_exchange/2" do
     test "returns access token and refresh token valid tokens" do
       user = insert(:user_with_personal_organisation)
