@@ -1241,7 +1241,7 @@ defmodule WraftDoc.Documents do
     base_content_dir = Path.join(File.cwd!(), instance_dir_path)
     File.mkdir_p(base_content_dir)
     File.mkdir_p(Path.join(File.cwd!(), "organisations/images/"))
-    System.cmd("cp", ["-a", file_path, base_content_dir])
+    File.cp_r!(file_path, base_content_dir)
 
     # Generate QR code for the file
     task = Task.async(fn -> generate_qr(instance, base_content_dir) end)
@@ -1665,8 +1665,8 @@ defmodule WraftDoc.Documents do
   defp generate_gnu_gantt_chart(%Plug.Upload{filename: filename, path: path}, title) do
     File.mkdir_p("temp/gantt_chart_input/")
     File.mkdir_p("temp/gantt_chart_output/")
-    dest_path = "temp/gantt_chart_input/#{filename}"
-    System.cmd("cp", [path, dest_path])
+    dest_path = "temp/gantt_chart_input/#{Path.basename(filename)}"
+    File.cp!(path, dest_path)
 
     dest_path = Path.expand(dest_path)
     out_name = Path.expand("temp/gantt_chart_output/gantt_#{title}.svg")
@@ -1733,8 +1733,8 @@ defmodule WraftDoc.Documents do
         }
       ) do
     File.mkdir_p("temp/bulk_build_source/")
-    dest_path = "temp/bulk_build_source/#{filename}"
-    System.cmd("cp", [path, dest_path])
+    dest_path = "temp/bulk_build_source/#{Path.basename(filename)}"
+    File.cp!(path, dest_path)
 
     create_bulk_job(%{
       user_uuid: current_user.id,
