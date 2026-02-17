@@ -1,0 +1,4 @@
+## 2025-05-30 - [Command Injection in Gnuplot Script Generation]
+**Vulnerability:** User-controlled inputs (title) were directly interpolated into Gnuplot scripts without sanitization, leading to Remote Code Execution (RCE) via Gnuplot's `system()` command. Additionally, a Path Traversal vulnerability existed via the `filename` parameter from `Plug.Upload` being used directly in a `cp` command.
+**Learning:** Gnuplot scripts are executable code. Generating them by string concatenation of user input is dangerous, similar to SQL injection. Trusting `filename` from `Plug.Upload` for filesystem paths is a common pitfall.
+**Prevention:** Sanitize all inputs interpolated into generated scripts (escape quotes and backslashes). Use `Path.basename/1` to strip directory components from filenames. Prefer safer file operation APIs (e.g., `File.cp!`) over `System.cmd`.

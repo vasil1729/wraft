@@ -1661,21 +1661,58 @@ defmodule WraftDoc.Documents do
         "
   end
 
+  @doc """
+  Sanitize a string for use in a Gnuplot script double-quoted string.
+  Escapes backslashes, double quotes, and backticks to prevent command injection.
+  """
+  def sanitize_gnuplot_string(string) do
+    string
+    |> String.replace("\\", "\\\\")
+    |> String.replace("\"", "\\\"")
+    |> String.replace("`", "\\`")
+  end
+
+  @doc """
+  Sanitize a path for use in a Gnuplot script single-quoted string.
+  Escapes single quotes by doubling them.
+  """
+  def sanitize_gnuplot_path(path) do
+    String.replace(path, "'", "''")
+  end
+
   # Generate a Gantt chart form the given CSV file using Gnuplot CLI.
   defp generate_gnu_gantt_chart(%Plug.Upload{filename: filename, path: path}, title) do
     File.mkdir_p("temp/gantt_chart_input/")
     File.mkdir_p("temp/gantt_chart_output/")
-    dest_path = "temp/gantt_chart_input/#{filename}"
-    System.cmd("cp", [path, dest_path])
+
+    # Use Path.basename to prevent path traversal via filename
+    safe_filename = Path.basename(filename)
+    dest_path = "temp/gantt_chart_input/#{safe_filename}"
+
+    # Use Elixir's File.cp! instead of System.cmd for safer file operations
+    File.cp!(path, dest_path)
 
     dest_path = Path.expand(dest_path)
-    out_name = Path.expand("temp/gantt_chart_output/gantt_#{title}.svg")
+
+    # Sanitize title for filename usage (alphanumeric only + space/hyphen/underscore)
+    safe_title_filename =
+      title
+      |> String.replace(~r/[^a-zA-Z0-9_\-\ ]/, "")
+      |> String.trim()
+
+    out_name = Path.expand("temp/gantt_chart_output/gantt_#{safe_title_filename}.svg")
+
+    # Sanitize title for Gnuplot script content (prevent command injection)
+    sanitized_title = sanitize_gnuplot_string(title)
+
+    # Use :code.priv_dir to locate the template correctly
+    template_path = Path.join(:code.priv_dir(:wraft_doc), "slugs/gantt_chart/gnuplot_gantt.plt")
 
     script =
-      File.read!("lib/priv/gantt_chart/gnuplot_gantt.plt")
-      |> String.replace("//input//", dest_path)
-      |> String.replace("//out_name//", out_name)
-      |> String.replace("//title//", title)
+      File.read!(template_path)
+      |> String.replace("//input//", sanitize_gnuplot_path(dest_path))
+      |> String.replace("//out_name//", sanitize_gnuplot_path(out_name))
+      |> String.replace("//title//", sanitized_title)
 
     File.write("temp/gantt_script.plt", script)
     file_path = Path.expand("temp/gantt_script.plt")
