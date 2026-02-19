@@ -1,0 +1,4 @@
+## 2024-05-22 - [Path Traversal and Command Injection in Gnuplot Generation]
+**Vulnerability:** The `generate_gnu_gantt_chart` function used user-provided filenames directly in `cp` command paths, leading to path traversal. It also used unsanitized titles in gnuplot scripts, leading to command injection via gnuplot's `system()` call.
+**Learning:** Functions that handle files and external commands must sanitize all user inputs. `System.cmd` is safer than `os.cmd` but still requires safe arguments. Gnuplot scripts are code and can execute shell commands.
+**Prevention:** Use `Path.basename` for filenames. Use allow-lists for strings used in filenames. Escape all strings interpolated into code/scripts (like gnuplot). Use `File.cp` instead of shelling out. Use UUIDs for temporary files to avoid race conditions.
