@@ -12,6 +12,19 @@ if System.get_env("PHX_SERVER") && System.get_env("RELEASE_NAME") do
   config :wraft_doc, WraftDocWeb.Endpoint, server: true
 end
 
+live_view_signing_salt =
+  System.get_env("LIVE_VIEW_SIGNING_SALT") ||
+    if config_env() == :prod do
+      raise """
+      environment variable LIVE_VIEW_SIGNING_SALT is missing.
+      You can generate one by calling: mix phx.gen.secret 32
+      """
+    else
+      "dev_signing_salt_do_not_use_in_prod"
+    end
+
+config :wraft_doc, WraftDocWeb.Endpoint, live_view: [signing_salt: live_view_signing_salt]
+
 if config_env() == :prod do
   database_url =
     System.get_env("DATABASE_URL") ||
