@@ -1661,25 +1661,48 @@ defmodule WraftDoc.Documents do
         "
   end
 
+  defp escape_gnuplot_string(str) do
+    str
+    |> String.replace("\\", "\\\\")
+    |> String.replace("\"", "\\\"")
+    |> String.replace("`", "\\`")
+    |> String.replace("\n", " ")
+    |> String.replace("\r", "")
+  end
+
   # Generate a Gantt chart form the given CSV file using Gnuplot CLI.
   defp generate_gnu_gantt_chart(%Plug.Upload{filename: filename, path: path}, title) do
     File.mkdir_p("temp/gantt_chart_input/")
     File.mkdir_p("temp/gantt_chart_output/")
-    dest_path = "temp/gantt_chart_input/#{filename}"
-    System.cmd("cp", [path, dest_path])
 
-    dest_path = Path.expand(dest_path)
-    out_name = Path.expand("temp/gantt_chart_output/gantt_#{title}.svg")
+    # Use UUID to prevent path traversal and collisions
+    safe_filename = "#{Ecto.UUID.generate()}_#{Path.basename(filename)}"
+    dest_path = Path.expand("temp/gantt_chart_input/#{safe_filename}")
+
+    # Use File.cp! instead of System.cmd for security
+    File.cp!(path, dest_path)
+
+    # Use UUID for output filename to prevent path traversal via title
+    out_name = Path.expand("temp/gantt_chart_output/gantt_#{Ecto.UUID.generate()}.svg")
+
+    # Use :code.priv_dir to reliably find the template
+    template_path = Path.join(:code.priv_dir(:wraft_doc), "slugs/gantt_chart/gnuplot_gantt.plt")
 
     script =
-      File.read!("lib/priv/gantt_chart/gnuplot_gantt.plt")
-      |> String.replace("//input//", dest_path)
-      |> String.replace("//out_name//", out_name)
-      |> String.replace("//title//", title)
+      File.read!(template_path)
+      |> String.replace("//input//", escape_gnuplot_string(dest_path))
+      |> String.replace("//out_name//", escape_gnuplot_string(out_name))
+      |> String.replace("//title//", escape_gnuplot_string(title))
 
-    File.write("temp/gantt_script.plt", script)
-    file_path = Path.expand("temp/gantt_script.plt")
-    System.cmd("gnuplot", ["-p", file_path])
+    # Use unique script name to prevent race conditions
+    script_path = Path.expand("temp/gantt_script_#{Ecto.UUID.generate()}.plt")
+    File.write!(script_path, script)
+
+    try do
+      System.cmd("gnuplot", ["-p", script_path])
+    after
+      File.rm(script_path)
+    end
   end
 
   # Generate bar for gant chart
