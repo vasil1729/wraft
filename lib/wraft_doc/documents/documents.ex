@@ -1662,24 +1662,45 @@ defmodule WraftDoc.Documents do
   end
 
   # Generate a Gantt chart form the given CSV file using Gnuplot CLI.
-  defp generate_gnu_gantt_chart(%Plug.Upload{filename: filename, path: path}, title) do
-    File.mkdir_p("temp/gantt_chart_input/")
-    File.mkdir_p("temp/gantt_chart_output/")
-    dest_path = "temp/gantt_chart_input/#{filename}"
-    System.cmd("cp", [path, dest_path])
+  defp generate_gnu_gantt_chart(%Plug.Upload{filename: _filename, path: path}, title) do
+    uuid = Ecto.UUID.generate()
+    work_dir = Path.join(System.tmp_dir!(), "wraft_gantt_#{uuid}")
+    File.mkdir_p!(work_dir)
 
-    dest_path = Path.expand(dest_path)
-    out_name = Path.expand("temp/gantt_chart_output/gantt_#{title}.svg")
+    output_dir = "temp/gantt_chart_output/"
+    File.mkdir_p!(output_dir)
 
-    script =
-      File.read!("lib/priv/gantt_chart/gnuplot_gantt.plt")
-      |> String.replace("//input//", dest_path)
-      |> String.replace("//out_name//", out_name)
-      |> String.replace("//title//", title)
+    try do
+      input_path = Path.join(work_dir, "data.csv")
+      script_path = Path.join(work_dir, "script.plt")
+      output_path = Path.expand(Path.join(output_dir, "gantt_#{uuid}.svg"))
 
-    File.write("temp/gantt_script.plt", script)
-    file_path = Path.expand("temp/gantt_script.plt")
-    System.cmd("gnuplot", ["-p", file_path])
+      File.cp!(path, input_path)
+
+      safe_title = escape_gnuplot_string(title)
+      template_path = Path.join(:code.priv_dir(:wraft_doc), "slugs/gantt_chart/gnuplot_gantt.plt")
+
+      script =
+        File.read!(template_path)
+        |> String.replace("//input//", input_path)
+        |> String.replace("//out_name//", output_path)
+        |> String.replace("//title//", safe_title)
+
+      File.write!(script_path, script)
+
+      case System.cmd("gnuplot", ["-p", script_path]) do
+        {_, 0} -> output_path
+        _ -> nil
+      end
+    after
+      File.rm_rf(work_dir)
+    end
+  end
+
+  defp escape_gnuplot_string(str) do
+    str
+    |> String.replace("\\", "\\\\")
+    |> String.replace("\"", "\\\"")
   end
 
   # Generate bar for gant chart
