@@ -1,0 +1,4 @@
+## 2023-10-27 - Gnuplot Command Injection via Template Injection
+**Vulnerability:** Found a critical RCE vulnerability where user-supplied `title` and `filename` were directly injected into a Gnuplot script string and passed to `System.cmd` and `cp` shell commands. This allowed arbitrary command execution and path traversal.
+**Learning:** The vulnerability existed because of insecure string interpolation into a script file executed by an external binary, and blind trust in user-provided filenames. Also, fixed path usage (`temp/`) introduced race conditions.
+**Prevention:** 1. Never interpolate user input into code/scripts. Use parameterized APIs if possible, or rigorous escaping/sanitization (e.g. `escape_gnuplot_string`). 2. Use `Path.basename` for filenames. 3. Use `System.tmp_dir!` and UUIDs for temporary files to avoid race conditions. 4. Prefer `File` module over `System.cmd` for file operations.
