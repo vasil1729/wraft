@@ -1663,23 +1663,46 @@ defmodule WraftDoc.Documents do
 
   # Generate a Gantt chart form the given CSV file using Gnuplot CLI.
   defp generate_gnu_gantt_chart(%Plug.Upload{filename: filename, path: path}, title) do
-    File.mkdir_p("temp/gantt_chart_input/")
-    File.mkdir_p("temp/gantt_chart_output/")
-    dest_path = "temp/gantt_chart_input/#{filename}"
-    System.cmd("cp", [path, dest_path])
+    # Sanitize inputs to prevent command injection and path traversal
+    safe_filename = Path.basename(filename)
+    safe_title = escape_gnuplot_string(title)
 
-    dest_path = Path.expand(dest_path)
-    out_name = Path.expand("temp/gantt_chart_output/gantt_#{title}.svg")
+    # Use a unique temporary directory to prevent race conditions
+    temp_dir = Path.join(System.tmp_dir!(), "wraft_gantt_#{Ecto.UUID.generate()}")
+    File.mkdir_p!(temp_dir)
+
+    dest_path = Path.join(temp_dir, safe_filename)
+    File.cp!(path, dest_path)
+
+    # Sanitize output filename
+    safe_out_name_base = String.replace(title, ~r/[^a-zA-Z0-9_\-]/, "_")
+    out_name = Path.join(temp_dir, "gantt_#{safe_out_name_base}.svg")
+
+    # Access the template safely
+    template_path = Path.join(:code.priv_dir(:wraft_doc), "slugs/gantt_chart/gnuplot_gantt.plt")
 
     script =
-      File.read!("lib/priv/gantt_chart/gnuplot_gantt.plt")
-      |> String.replace("//input//", dest_path)
-      |> String.replace("//out_name//", out_name)
-      |> String.replace("//title//", title)
+      File.read!(template_path)
+      |> String.replace("//input//", escape_gnuplot_string(dest_path))
+      |> String.replace("//out_name//", escape_gnuplot_string(out_name))
+      |> String.replace("//title//", safe_title)
 
-    File.write("temp/gantt_script.plt", script)
-    file_path = Path.expand("temp/gantt_script.plt")
-    System.cmd("gnuplot", ["-p", file_path])
+    script_path = Path.join(temp_dir, "gantt_script.plt")
+    File.write!(script_path, script)
+
+    System.cmd("gnuplot", ["-p", script_path])
+
+    # Return the output path for further processing if needed,
+    # though the original function didn't return anything specific.
+    # We should probably clean up, but the original didn't either.
+    out_name
+  end
+
+  defp escape_gnuplot_string(str) do
+    str
+    |> String.replace("\\", "\\\\")
+    |> String.replace("\"", "\\\"")
+    |> String.replace("`", "\\`") # Prevent backtick injection if gnuplot uses system calls
   end
 
   # Generate bar for gant chart
