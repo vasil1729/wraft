@@ -21,6 +21,18 @@ defmodule WraftDocWeb.SessionController do
       |> put_flash(:info, "Signed in successfully.")
       |> redirect(to: kaffy_home_path(conn, :index))
     else
+      nil ->
+        Bcrypt.no_user_verify()
+
+        conn
+        |> put_flash(:error, "Please provide the correct login credentials to login.")
+        |> redirect(to: session_path(conn, :new))
+
+      false ->
+        conn
+        |> put_flash(:error, "Please provide the correct login credentials to login.")
+        |> redirect(to: session_path(conn, :new))
+
       _ ->
         conn
         |> put_flash(:error, "Please provide the correct login credentials to login.")

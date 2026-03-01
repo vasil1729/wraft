@@ -1,0 +1,4 @@
+## 2024-05-24 - User Enumeration and Timing Attack on Authentication
+**Vulnerability:** User enumeration via error messages and timing attacks during login, as the application returned different errors ("No user with this email.!" vs "Your email-password combination doesn't match.") depending on user existence, and bypassed password hashing when a user lookup failed.
+**Learning:** `Account.find/1` returns an `{:error, ...}` tuple which short-circuited `with` statements before checking `Bcrypt.verify_pass/2`. The difference in response time leaks whether an email is registered.
+**Prevention:** Always use `Account.get_user_by_email/1` to retrieve the struct and `Bcrypt.no_user_verify()` inside the fallback (`else`) of authentication `with` blocks to simulate password checking time, and return identical generic error messages for invalid credentials.
