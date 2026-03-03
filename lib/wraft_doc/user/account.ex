@@ -510,6 +510,41 @@ defmodule WraftDoc.Account do
     end
   end
 
+  @doc """
+    Authenticate user by email and password.
+    This function prevents user enumeration by returning a generic error
+    and simulating password verification time when user is not found.
+  """
+  @spec authenticate_by_email_and_password(binary(), binary()) ::
+          {:error, atom}
+          | {:ok,
+             %{
+               user: User.t(),
+               tokens: [access_token: Guardian.Token.token(), refresh_token: Guardian.Token.token()]
+             }}
+  def authenticate_by_email_and_password(email, password) do
+    user = get_user_by_email(email)
+
+    if user do
+      case Bcrypt.verify_pass(password, user.encrypted_password) do
+        true ->
+          user = Repo.preload(user, :profile)
+
+          %{organisation: _personal_org, user: user} =
+            Enterprise.get_personal_organisation_and_role(user)
+
+          updated_sign_in_at(user)
+          {:ok, %{user: user, tokens: Guardian.generate_tokens(user, user.last_signed_in_org)}}
+
+        _ ->
+          {:error, :invalid}
+      end
+    else
+      Bcrypt.no_user_verify()
+      {:error, :invalid}
+    end
+  end
+
   # Update the recent login time of the user.
   defp updated_sign_in_at(%User{} = user) do
     user
