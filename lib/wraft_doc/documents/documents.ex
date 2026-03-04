@@ -1693,25 +1693,50 @@ defmodule WraftDoc.Documents do
         "
   end
 
+  defp escape_gnuplot_string(string) do
+    string
+    |> String.replace("\\", "\\\\")
+    |> String.replace("\"", "\\\"")
+    |> String.replace("`", "\\`")
+  end
+
+  defp sanitize_filename(name) do
+    String.replace(name, ~r/[^a-zA-Z0-9_\-\.]/, "")
+  end
+
   # Generate a Gantt chart form the given CSV file using Gnuplot CLI.
   defp generate_gnu_gantt_chart(%Plug.Upload{filename: filename, path: path}, title) do
-    File.mkdir_p("temp/gantt_chart_input/")
-    File.mkdir_p("temp/gantt_chart_output/")
-    dest_path = "temp/gantt_chart_input/#{filename}"
-    System.cmd("cp", [path, dest_path])
+    uuid = Ecto.UUID.generate()
+    tmp_dir = Path.join(System.tmp_dir!(), "gantt_#{uuid}")
+    File.mkdir_p!(tmp_dir)
 
-    dest_path = Path.expand(dest_path)
-    out_name = Path.expand("temp/gantt_chart_output/gantt_#{title}.svg")
+    dest_path = Path.join(tmp_dir, Path.basename(filename) |> sanitize_filename())
+    file_path = Path.join(tmp_dir, "gantt_script.plt")
+    out_name = Path.join(tmp_dir, "gantt_#{sanitize_filename(title)}.svg")
 
-    script =
-      File.read!("lib/priv/gantt_chart/gnuplot_gantt.plt")
-      |> String.replace("//input//", dest_path)
-      |> String.replace("//out_name//", out_name)
-      |> String.replace("//title//", title)
+    try do
+      File.cp!(path, dest_path)
 
-    File.write("temp/gantt_script.plt", script)
-    file_path = Path.expand("temp/gantt_script.plt")
-    System.cmd("gnuplot", ["-p", file_path])
+      script_path =
+        :wraft_doc
+        |> :code.priv_dir()
+        |> Path.join("slugs/gantt_chart/gnuplot_gantt.plt")
+
+      script =
+        File.read!(script_path)
+        |> String.replace("//input//", escape_gnuplot_string(dest_path))
+        |> String.replace("//out_name//", escape_gnuplot_string(out_name))
+        |> String.replace("//title//", escape_gnuplot_string(title))
+
+      File.write!(file_path, script)
+
+      {_output, 0} = System.cmd("gnuplot", ["-p", file_path])
+
+      out_name
+    after
+      File.rm(dest_path)
+      File.rm(file_path)
+    end
   end
 
   # Generate bar for gant chart
