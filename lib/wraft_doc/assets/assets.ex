@@ -114,10 +114,8 @@ defmodule WraftDoc.Assets do
     end
   end
 
-  def get_asset(<<_::288>> = asset_id, nil), do: Repo.get(Asset, asset_id)
   def get_asset(<<_::288>>, _), do: {:error, :fake}
   def get_asset(_, %{current_org_id: _}), do: {:error, :invalid_id}
-  def get_asset(<<_::288>> = asset_id), do: Repo.get(Asset, asset_id)
 
   @doc """
   Update an asset.

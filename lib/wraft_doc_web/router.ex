@@ -82,7 +82,7 @@ defmodule WraftDocWeb.Router do
   end
 
   scope "/", WraftDocWeb.Api.V1 do
-    pipe_through(:api)
+    pipe_through([:api, :api_auth])
     # Asset image redirect to minio url
     get("/asset/image/:id", AssetController, :show_image)
   end
