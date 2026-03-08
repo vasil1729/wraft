@@ -1650,6 +1650,8 @@ defmodule WraftDoc.Documents do
   end
 
   def generate_tex_chart(%{"input" => input, "btype" => "gantt", "name" => name}) do
+    # generate_gnu_gantt_chart will return the path to the SVG image created.
+    # The caller expects a string for `tex_chart`.
     generate_gnu_gantt_chart(input, name)
   end
 
@@ -1693,25 +1695,62 @@ defmodule WraftDoc.Documents do
         "
   end
 
+  # Helper to safely escape strings for Gnuplot scripts to prevent command injection
+  defp escape_gnuplot_string(str) do
+    str
+    |> String.replace("\\", "\\\\")
+    |> String.replace("\"", "\\\"")
+    |> String.replace("'", "\\'")
+    |> String.replace("`", "\\`")
+    |> String.replace("\n", "")
+    |> String.replace("\r", "")
+  end
+
   # Generate a Gantt chart form the given CSV file using Gnuplot CLI.
   defp generate_gnu_gantt_chart(%Plug.Upload{filename: filename, path: path}, title) do
-    File.mkdir_p("temp/gantt_chart_input/")
-    File.mkdir_p("temp/gantt_chart_output/")
-    dest_path = "temp/gantt_chart_input/#{filename}"
-    System.cmd("cp", [path, dest_path])
+    uuid = Ecto.UUID.generate()
+    base_dir = Path.join(System.tmp_dir!(), "gantt_#{uuid}")
 
-    dest_path = Path.expand(dest_path)
-    out_name = Path.expand("temp/gantt_chart_output/gantt_#{title}.svg")
+    File.mkdir_p!(base_dir)
+    File.mkdir_p!("temp/gantt_chart_output/")
 
-    script =
-      File.read!("lib/priv/gantt_chart/gnuplot_gantt.plt")
-      |> String.replace("//input//", dest_path)
-      |> String.replace("//out_name//", out_name)
-      |> String.replace("//title//", title)
+    try do
+      # Sanitize filename
+      safe_filename =
+        filename
+        |> Path.basename()
+        |> String.replace(~r/[^a-zA-Z0-9_\-\.]/, "_")
 
-    File.write("temp/gantt_script.plt", script)
-    file_path = Path.expand("temp/gantt_script.plt")
-    System.cmd("gnuplot", ["-p", file_path])
+      dest_path = Path.join(base_dir, safe_filename)
+      File.cp!(path, dest_path)
+
+      safe_title =
+        title
+        |> String.replace(~r/[^a-zA-Z0-9_\-\.]/, "_")
+
+      # Use the legacy path format for the final output, but sanitized
+      out_name = Path.expand("temp/gantt_chart_output/gantt_#{uuid}_#{safe_title}.svg")
+
+      # Use original path approach as the application might not be packaged properly yet
+      script_path = "lib/priv/gantt_chart/gnuplot_gantt.plt"
+
+      script =
+        File.read!(script_path)
+        |> String.replace("//input//", escape_gnuplot_string(dest_path))
+        |> String.replace("//out_name//", escape_gnuplot_string(out_name))
+        |> String.replace("//title//", escape_gnuplot_string(title))
+
+      plt_path = Path.join(base_dir, "gantt_script.plt")
+      File.write!(plt_path, script)
+
+      System.cmd("gnuplot", ["-p", plt_path])
+
+      # The caller to generate_tex_chart expects a string (saved in `tex_chart` of `Block`),
+      # so returning the path is better than returning the System.cmd tuple.
+      out_name
+    after
+      File.rm_rf!(base_dir)
+    end
   end
 
   # Generate bar for gant chart
