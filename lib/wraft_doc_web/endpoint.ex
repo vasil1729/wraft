@@ -15,8 +15,12 @@ defmodule WraftDocWeb.Endpoint do
   @session_options [
     store: :cookie,
     key: "_wraftdoc_key",
-    signing_salt: "hUnYtn2s"
+    signing_salt: {__MODULE__, :session_signing_salt, []}
   ]
+
+  def session_signing_salt do
+    System.get_env("SESSION_SIGNING_SALT") || "dev_signing_salt_insecure_change_me"
+  end
 
   socket("/live", Phoenix.LiveView.Socket, websocket: [connect_info: [session: @session_options]])
 
