@@ -1,0 +1,4 @@
+## 2024-05-24 - [Timing Attack and User Enumeration Vulnerability in Authentication]
+**Vulnerability:** Both `WraftDocWeb.SessionController.create/2` and `WraftDocWeb.UserController.signin/2` were susceptible to timing attacks that could allow user enumeration. When a provided email did not exist, the controllers returned different responses (or returned early without hashing a password) compared to when an email did exist but the password was incorrect.
+**Learning:** Elixir's `with` statement can easily lead to timing leaks and enumeration vulnerabilities during authentication if it relies on sequential database lookups and password checks.
+**Prevention:** Use `Bcrypt.no_user_verify()` to simulate the computational cost of hashing passwords when an initial user lookup fails. Also, ensure the error responses for "user not found" and "invalid password" are identical and returned in generic forms (e.g., `{:error, :invalid}`).
