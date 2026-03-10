@@ -12,6 +12,7 @@ config :wraft_doc, WraftDocWeb.Endpoint,
   code_reloader: true,
   check_origin: false,
   secret_key_base: Map.fetch!(System.get_env(), "SECRET_KEY_BASE"),
+  live_view: [signing_salt: "2B8BVDxqHCMKIa5cHoQ2lM0Ne7gUxvkb"],
   watchers: [
     # Start the esbuild watcher by calling Esbuild.install_and_run(:default, args)
     esbuild: {Esbuild, :install_and_run, [:default, ~w(--sourcemap=inline --watch)]}
