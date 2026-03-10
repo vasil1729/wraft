@@ -70,3 +70,4 @@ priv/slugs/organisation
 !priv/slugs/gantt_chart/**
 !priv/slugs/pletter/**
 .env.custom
+.nix-data/
