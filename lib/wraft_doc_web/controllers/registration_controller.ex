@@ -57,6 +57,13 @@ defmodule WraftDocWeb.Api.V1.RegistrationController do
             refresh_token: refresh_token,
             organisations: organisations
           )
+        else
+          {:error, :invalid_email} ->
+            Bcrypt.no_user_verify()
+            {:error, :invalid}
+
+          error ->
+            error
         end
 
       false ->
