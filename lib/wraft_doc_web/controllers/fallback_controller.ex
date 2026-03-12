@@ -12,7 +12,7 @@ defmodule WraftDocWeb.FallbackController do
     |> render("error.json", changeset: changeset)
   end
 
-  def call(conn, {:error, :invalid}) do
+  def call(conn, {:error, error_type}) when error_type in [:invalid, :invalid_email, :invalid_password] do
     body =
       Jason.encode!(%{
         errors: "Your email-password combination doesn't match. Please try again.!"
@@ -26,21 +26,10 @@ defmodule WraftDocWeb.FallbackController do
     conn |> put_resp_content_type("application/json") |> send_resp(400, body)
   end
 
-  def call(conn, {:error, :invalid_email}) do
-    body = Jason.encode!(%{errors: "No user with this email.!"})
-
-    conn |> put_resp_content_type("application/json") |> send_resp(404, body)
-  end
-
   def call(conn, {:error, :fake}) do
     body = Jason.encode!(%{errors: "You are not authorized for this action.!"})
 
     conn |> put_resp_content_type("application/json") |> send_resp(403, body)
-  end
-
-  def call(conn, {:error, :invalid_password}) do
-    body = Jason.encode!(%{errors: "You have entered a wrong password.!"})
-    conn |> put_resp_content_type("application/json") |> send_resp(400, body)
   end
 
   def call(conn, {:error, :same_password}) do
