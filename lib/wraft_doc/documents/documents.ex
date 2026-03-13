@@ -1695,23 +1695,35 @@ defmodule WraftDoc.Documents do
 
   # Generate a Gantt chart form the given CSV file using Gnuplot CLI.
   defp generate_gnu_gantt_chart(%Plug.Upload{filename: filename, path: path}, title) do
+    filename = Path.basename(filename)
+    sanitized_title_filename = String.replace(title, ~r/[^a-zA-Z0-9_-]/, "_")
+
     File.mkdir_p("temp/gantt_chart_input/")
     File.mkdir_p("temp/gantt_chart_output/")
     dest_path = "temp/gantt_chart_input/#{filename}"
     System.cmd("cp", [path, dest_path])
 
     dest_path = Path.expand(dest_path)
-    out_name = Path.expand("temp/gantt_chart_output/gantt_#{title}.svg")
+    out_name = Path.expand("temp/gantt_chart_output/gantt_#{sanitized_title_filename}.svg")
+
+    script_path = Path.join(:code.priv_dir(:wraft_doc), "slugs/gantt_chart/gnuplot_gantt.plt")
 
     script =
-      File.read!("lib/priv/gantt_chart/gnuplot_gantt.plt")
-      |> String.replace("//input//", dest_path)
+      File.read!(script_path)
+      |> String.replace("//input//", escape_gnuplot_string(dest_path))
       |> String.replace("//out_name//", out_name)
-      |> String.replace("//title//", title)
+      |> String.replace("//title//", escape_gnuplot_string(title))
 
     File.write("temp/gantt_script.plt", script)
     file_path = Path.expand("temp/gantt_script.plt")
     System.cmd("gnuplot", ["-p", file_path])
+    out_name
+  end
+
+  defp escape_gnuplot_string(str) do
+    str
+    |> String.replace("\\", "\\\\")
+    |> String.replace("\"", "\\\"")
   end
 
   # Generate bar for gant chart
