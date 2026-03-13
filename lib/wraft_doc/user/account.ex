@@ -510,6 +510,29 @@ defmodule WraftDoc.Account do
     end
   end
 
+  @doc """
+    Authenticate user by email and password, handling user enumeration protection.
+  """
+  def authenticate_by_email_and_password(email, password) do
+    user = get_user_by_email(email)
+
+    if user do
+      if Bcrypt.verify_pass(password, user.encrypted_password) do
+        user = Repo.preload(user, :profile)
+        %{organisation: _personal_org, user: user} =
+          Enterprise.get_personal_organisation_and_role(user)
+
+        updated_sign_in_at(user)
+        {:ok, %{user: user, tokens: Guardian.generate_tokens(user, user.last_signed_in_org)}}
+      else
+        {:error, :invalid}
+      end
+    else
+      Bcrypt.no_user_verify()
+      {:error, :invalid}
+    end
+  end
+
   # Update the recent login time of the user.
   defp updated_sign_in_at(%User{} = user) do
     user
