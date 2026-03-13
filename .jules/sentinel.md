@@ -1,0 +1,4 @@
+## 2024-05-24 - [Path Traversal in Gnuplot/CP System Calls]
+**Vulnerability:** User-controlled filenames (`Plug.Upload.filename`) and titles were used directly in `System.cmd("cp", ...)` and Gnuplot script generation, allowing path traversal (e.g., `../../etc/passwd`) and arbitrary file overwrite.
+**Learning:** `System.cmd` does not sanitize paths. Even if shell injection is avoided by passing arguments as a list, path traversal is still possible if inputs contain directory separators. Using `cp` command externally is risky and unnecessary when the language provides safer alternatives.
+**Prevention:** Always sanitize filenames from uploads using `Path.basename/1`. Sanitize user inputs used in file paths to allow only safe characters (e.g., alphanumeric). Prefer language-native file operations like `File.cp/2` over shelling out to system commands.

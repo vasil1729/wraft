@@ -1697,17 +1697,18 @@ defmodule WraftDoc.Documents do
   defp generate_gnu_gantt_chart(%Plug.Upload{filename: filename, path: path}, title) do
     File.mkdir_p("temp/gantt_chart_input/")
     File.mkdir_p("temp/gantt_chart_output/")
-    dest_path = "temp/gantt_chart_input/#{filename}"
-    System.cmd("cp", [path, dest_path])
+    dest_path = "temp/gantt_chart_input/#{Path.basename(filename)}"
+    File.cp!(path, dest_path)
 
     dest_path = Path.expand(dest_path)
-    out_name = Path.expand("temp/gantt_chart_output/gantt_#{title}.svg")
+    safe_title = String.replace(title, ~r/[^a-zA-Z0-9_\-]/, "_")
+    out_name = Path.expand("temp/gantt_chart_output/gantt_#{safe_title}.svg")
 
     script =
       File.read!("lib/priv/gantt_chart/gnuplot_gantt.plt")
       |> String.replace("//input//", dest_path)
       |> String.replace("//out_name//", out_name)
-      |> String.replace("//title//", title)
+      |> String.replace("//title//", safe_title)
 
     File.write("temp/gantt_script.plt", script)
     file_path = Path.expand("temp/gantt_script.plt")
@@ -1765,8 +1766,8 @@ defmodule WraftDoc.Documents do
         }
       ) do
     File.mkdir_p("temp/bulk_build_source/")
-    dest_path = "temp/bulk_build_source/#{filename}"
-    System.cmd("cp", [path, dest_path])
+    dest_path = "temp/bulk_build_source/#{Path.basename(filename)}"
+    File.cp!(path, dest_path)
 
     create_bulk_job(%{
       user_uuid: current_user.id,
