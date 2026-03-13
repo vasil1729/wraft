@@ -1694,24 +1694,41 @@ defmodule WraftDoc.Documents do
   end
 
   # Generate a Gantt chart form the given CSV file using Gnuplot CLI.
-  defp generate_gnu_gantt_chart(%Plug.Upload{filename: filename, path: path}, title) do
+  defp generate_gnu_gantt_chart(%Plug.Upload{filename: _filename, path: path}, title) do
     File.mkdir_p("temp/gantt_chart_input/")
     File.mkdir_p("temp/gantt_chart_output/")
-    dest_path = "temp/gantt_chart_input/#{filename}"
-    System.cmd("cp", [path, dest_path])
 
-    dest_path = Path.expand(dest_path)
-    out_name = Path.expand("temp/gantt_chart_output/gantt_#{title}.svg")
+    unique_id = Ecto.UUID.generate()
+    dest_path = Path.expand("temp/gantt_chart_input/#{unique_id}.csv")
+    out_name = Path.expand("temp/gantt_chart_output/gantt_#{unique_id}.svg")
+
+    File.cp!(path, dest_path)
+
+    # Correct path to the template
+    template_path = "priv/slugs/gantt_chart/gnuplot_gantt.plt"
 
     script =
-      File.read!("lib/priv/gantt_chart/gnuplot_gantt.plt")
-      |> String.replace("//input//", dest_path)
-      |> String.replace("//out_name//", out_name)
-      |> String.replace("//title//", title)
+      File.read!(template_path)
+      |> String.replace("//input//", escape_gnuplot_string(dest_path))
+      |> String.replace("//out_name//", escape_gnuplot_string(out_name))
+      |> String.replace("//title//", escape_gnuplot_string(title))
 
-    File.write("temp/gantt_script.plt", script)
-    file_path = Path.expand("temp/gantt_script.plt")
-    System.cmd("gnuplot", ["-p", file_path])
+    script_path = Path.expand("temp/#{unique_id}.plt")
+    File.write!(script_path, script)
+
+    try do
+      System.cmd("gnuplot", ["-p", script_path])
+    after
+      File.rm(script_path)
+      File.rm(dest_path)
+    end
+  end
+
+  defp escape_gnuplot_string(str) do
+    str
+    |> String.replace("\\", "\\\\")
+    |> String.replace("\"", "\\\"")
+    |> String.replace("`", "\\`")
   end
 
   # Generate bar for gant chart
