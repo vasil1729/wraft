@@ -1,0 +1,4 @@
+## 2025-02-20 - Fix Timing Attack User Enumeration
+**Vulnerability:** User enumeration via timing attack in `WraftDocWeb.Api.V1.UserController.signin/2` and `WraftDocWeb.SessionController.create/2`.
+**Learning:** Elixir `with` blocks short-circuit upon failed matches. When user lookup fails, the slow `Bcrypt.verify_pass/2` function is skipped. This difference in execution time allows attackers to distinguish between existing and non-existing users. Memory note emphasizes calling `Bcrypt.no_user_verify()` on the controller level during the authentication flow on specific failure paths (e.g., `nil` or `{:error, :invalid_email}`).
+**Prevention:** Catch missing user match failures in the `else` block of the `with` statement and explicitly call `Bcrypt.no_user_verify()` to simulate the password hashing delay, ensuring that generic error messages are returned.
