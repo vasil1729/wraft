@@ -48,6 +48,14 @@ defmodule WraftDocWeb.Api.V1.UserController do
         refresh_token: refresh_token,
         user: user
       )
+    else
+      {:error, :invalid_email} ->
+        # Prevent timing attacks by simulating verification time
+        Bcrypt.no_user_verify()
+        {:error, :invalid}
+
+      error ->
+        error
     end
   end
 
