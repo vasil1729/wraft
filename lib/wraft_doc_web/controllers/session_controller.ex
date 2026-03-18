@@ -26,6 +26,14 @@ defmodule WraftDocWeb.SessionController do
         |> put_flash(:info, "Your account has been deactivated, please contact support.")
         |> redirect(to: session_path(conn, :new))
 
+      nil ->
+        # Simulate password hashing to prevent timing attacks
+        Bcrypt.no_user_verify()
+
+        conn
+        |> put_flash(:error, "Please provide the correct login credentials to login.")
+        |> redirect(to: session_path(conn, :new))
+
       _ ->
         conn
         |> put_flash(:error, "Please provide the correct login credentials to login.")
