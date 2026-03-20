@@ -48,6 +48,13 @@ defmodule WraftDocWeb.Api.V1.UserController do
         refresh_token: refresh_token,
         user: user
       )
+    else
+      {:error, :invalid_email} ->
+        Bcrypt.no_user_verify()
+        {:error, :invalid}
+
+      error ->
+        error
     end
   end
 
@@ -202,6 +209,15 @@ defmodule WraftDocWeb.Api.V1.UserController do
       conn
       |> put_resp_header("content-type", "application/json")
       |> send_resp(200, Jason.encode!(%{info: "Success"}))
+    else
+      {:error, :invalid_email} ->
+        # Prevent user enumeration by returning success message even if email doesn't exist
+        conn
+        |> put_resp_header("content-type", "application/json")
+        |> send_resp(200, Jason.encode!(%{info: "Success"}))
+
+      error ->
+        error
     end
   end
 
