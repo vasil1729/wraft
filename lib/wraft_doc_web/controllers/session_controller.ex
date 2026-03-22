@@ -13,20 +13,29 @@ defmodule WraftDocWeb.SessionController do
   end
 
   def create(conn, %{"session" => params}) do
-    with %InternalUser{is_deactivated: false} = user <-
-           InternalUsers.get_by_email(params["email"]),
-         true <- Bcrypt.verify_pass(params["password"], user.encrypted_password) do
-      conn
-      |> put_session(:admin_id, user.id)
-      |> put_flash(:info, "Signed in successfully.")
-      |> redirect(to: kaffy_home_path(conn, :index))
-    else
-      %InternalUser{is_deactivated: true} ->
+    user = InternalUsers.get_by_email(params["email"])
+
+    cond do
+      user && Bcrypt.verify_pass(params["password"], user.encrypted_password) ->
+        if user.is_deactivated do
+          conn
+          |> put_flash(:info, "Your account has been deactivated, please contact support.")
+          |> redirect(to: session_path(conn, :new))
+        else
+          conn
+          |> put_session(:admin_id, user.id)
+          |> put_flash(:info, "Signed in successfully.")
+          |> redirect(to: kaffy_home_path(conn, :index))
+        end
+
+      user ->
         conn
-        |> put_flash(:info, "Your account has been deactivated, please contact support.")
+        |> put_flash(:error, "Please provide the correct login credentials to login.")
         |> redirect(to: session_path(conn, :new))
 
-      _ ->
+      true ->
+        Bcrypt.no_user_verify()
+
         conn
         |> put_flash(:error, "Please provide the correct login credentials to login.")
         |> redirect(to: session_path(conn, :new))
