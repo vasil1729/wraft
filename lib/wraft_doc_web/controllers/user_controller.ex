@@ -48,6 +48,13 @@ defmodule WraftDocWeb.Api.V1.UserController do
         refresh_token: refresh_token,
         user: user
       )
+    else
+      {:error, :invalid_email} ->
+        Bcrypt.no_user_verify()
+        {:error, :invalid}
+
+      error ->
+        error
     end
   end
 
@@ -192,17 +199,19 @@ defmodule WraftDocWeb.Api.V1.UserController do
   @spec generate_token(Plug.Conn.t(), map) :: Plug.Conn.t()
   # TODO - Update tests to check correct mail is send
   def generate_token(conn, params) do
-    with %AuthToken{} = auth_token <- AuthTokens.create_password_token(params) do
-      if params["first_time_setup"] do
-        Account.send_password_set_mail(auth_token)
-      else
-        Account.send_password_reset_mail(auth_token)
-      end
-
-      conn
-      |> put_resp_header("content-type", "application/json")
-      |> send_resp(200, Jason.encode!(%{info: "Success"}))
+    case AuthTokens.create_password_token(params) do
+      %AuthToken{} = auth_token ->
+        if params["first_time_setup"] do
+          Account.send_password_set_mail(auth_token)
+        else
+          Account.send_password_reset_mail(auth_token)
+        end
+      _ ->
+        nil
     end
+    conn
+    |> put_resp_header("content-type", "application/json")
+    |> send_resp(200, Jason.encode!(%{info: "Success"}))
   end
 
   @doc """
