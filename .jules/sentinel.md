@@ -1,0 +1,8 @@
+## 2026-03-26 - [CRITICAL] Command Injection and Path Traversal in generate_gnu_gantt_chart
+**Vulnerability:** The `generate_gnu_gantt_chart` function in `lib/wraft_doc/documents/documents.ex` was vulnerable to multi-line command injection due to unsanitized string replacements in the `gnuplot_gantt.plt` script template (`//title//`, `//input//`, `//out_name//`). It was also vulnerable to path traversal and OS command injection in `System.cmd("cp", ...)` because the uploaded filename and `title` variables were not sanitized or escaped. Temporary files were also placed in a shared `temp/gantt_chart_input/` directory without UUIDs, creating race conditions.
+**Learning:** Gnuplot scripts allow evaluating shell commands (`! command` or `` `command` ``), and unescaped strings in injected variables can break out of quotes, resulting in OS command injection. Elixir's `System.cmd` is safe only if arguments are passed as lists and not when variables can traverse directories. Furthermore, temporary files in a web application must be scoped per request using unique directories (e.g., `Ecto.UUID.generate()`) and cleaned up in a `try/after` block to prevent resource leaks and collisions.
+**Prevention:**
+1. Sanitize user-provided filenames (e.g., `Path.basename/1` and restricting characters via Regex).
+2. Always strictly escape string variables injected into Gnuplot scripts (escape backslashes, double/single quotes, backticks, and remove newlines).
+3. Use `File.cp!` instead of `System.cmd` for basic file copying.
+4. Use unique, temporary directories (e.g., `System.tmp_dir!() <> Ecto.UUID.generate()`) for intermediate processing, and guarantee cleanup using `try/after`.
