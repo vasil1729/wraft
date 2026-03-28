@@ -1,0 +1,4 @@
+## 2025-02-12 - [Timing Attack in Elixir with Statements]
+**Vulnerability:** In Elixir authentication flows, short-circuiting `with` statements upon failed user lookups can cause timing leaks, allowing user enumeration because the application skips the slow password hashing step when an email does not exist.
+**Learning:** Returning early or jumping to the `else` block of a `with` statement without equalizing computation time introduces a severe timing attack vector.
+**Prevention:** Explicitly match the failure path of user lookups (e.g., `nil` or `{:error, :invalid_email}`) in the `else` block and call `Bcrypt.no_user_verify()` to simulate the delay of password verification before returning a generic error message. Avoid calling `Bcrypt.no_user_verify()` if password verification fails to prevent double-hashing Denial of Service (DoS) vulnerabilities.
