@@ -48,6 +48,13 @@ defmodule WraftDocWeb.Api.V1.UserController do
         refresh_token: refresh_token,
         user: user
       )
+    else
+      {:error, :invalid_email} ->
+        Bcrypt.no_user_verify()
+        {:error, :invalid_email}
+
+      error ->
+        error
     end
   end
 
