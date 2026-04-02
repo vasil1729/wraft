@@ -202,6 +202,11 @@ defmodule WraftDocWeb.Api.V1.UserController do
       conn
       |> put_resp_header("content-type", "application/json")
       |> send_resp(200, Jason.encode!(%{info: "Success"}))
+    else
+      _ ->
+        conn
+        |> put_resp_header("content-type", "application/json")
+        |> send_resp(200, Jason.encode!(%{info: "Success"}))
     end
   end
 
