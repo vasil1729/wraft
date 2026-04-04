@@ -1,0 +1,4 @@
+## 2024-04-04 - [SessionController Timing Attack and Enumeration Fix]
+**Vulnerability:** The authentication flow in `SessionController` evaluated user's deactivated status before performing password verification. This introduced a timing attack that could allow an attacker to enumerate deactivated accounts. Also, if a user was not found, the `Bcrypt.no_user_verify()` check was not performed, allowing email enumeration via timing discrepancies.
+**Learning:** Always verify passwords before checking business logic status flags to prevent timing attacks. In Elixir, short-circuiting `with` statements without calling `Bcrypt.no_user_verify()` introduces timing vulnerabilities on failed lookups. Avoid this by explicitly performing delay on failed lookups.
+**Prevention:** Verify passwords (`Bcrypt.verify_pass/2`) *before* checking business logic (e.g., `user.is_deactivated`), and always explicitly call `Bcrypt.no_user_verify()` when a user isn't found.
