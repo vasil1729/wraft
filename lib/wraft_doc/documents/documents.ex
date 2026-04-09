@@ -1693,25 +1693,45 @@ defmodule WraftDoc.Documents do
         "
   end
 
+  defp escape_gnuplot_string(str) do
+    str
+    |> String.replace("\r", "")
+    |> String.replace("\n", "")
+    |> String.replace("\\", "\\\\")
+    |> String.replace("\"", "\\\"")
+    |> String.replace("'", "\\'")
+    |> String.replace("`", "\\`")
+  end
+
   # Generate a Gantt chart form the given CSV file using Gnuplot CLI.
   defp generate_gnu_gantt_chart(%Plug.Upload{filename: filename, path: path}, title) do
-    File.mkdir_p("temp/gantt_chart_input/")
-    File.mkdir_p("temp/gantt_chart_output/")
-    dest_path = "temp/gantt_chart_input/#{filename}"
-    System.cmd("cp", [path, dest_path])
+    uuid = Ecto.UUID.generate()
+    tmp_dir = Path.join(System.tmp_dir!(), "gantt_#{uuid}")
+    File.mkdir_p!(tmp_dir)
 
-    dest_path = Path.expand(dest_path)
-    out_name = Path.expand("temp/gantt_chart_output/gantt_#{title}.svg")
+    try do
+      File.mkdir_p("temp/gantt_chart_output/")
 
-    script =
-      File.read!("lib/priv/gantt_chart/gnuplot_gantt.plt")
-      |> String.replace("//input//", dest_path)
-      |> String.replace("//out_name//", out_name)
-      |> String.replace("//title//", title)
+      safe_filename = Path.basename(filename)
+      dest_path = Path.join(tmp_dir, safe_filename)
+      File.cp!(path, dest_path)
 
-    File.write("temp/gantt_script.plt", script)
-    file_path = Path.expand("temp/gantt_script.plt")
-    System.cmd("gnuplot", ["-p", file_path])
+      safe_title = Regex.replace(~r/[^a-zA-Z0-9_\-\.\ ]/, title, "")
+      out_name = Path.expand("temp/gantt_chart_output/gantt_#{safe_title}.svg")
+
+      script =
+        File.read!("lib/priv/gantt_chart/gnuplot_gantt.plt")
+        |> String.replace("//input//", escape_gnuplot_string(dest_path))
+        |> String.replace("//out_name//", escape_gnuplot_string(out_name))
+        |> String.replace("//title//", escape_gnuplot_string(safe_title))
+
+      script_path = Path.join(tmp_dir, "gantt_script.plt")
+      File.write!(script_path, script)
+
+      System.cmd("gnuplot", ["-p", script_path])
+    after
+      File.rm_rf(tmp_dir)
+    end
   end
 
   # Generate bar for gant chart
