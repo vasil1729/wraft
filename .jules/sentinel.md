@@ -1,0 +1,4 @@
+## 2025-02-28 - Secure Gnuplot script injection and fix path traversal
+**Vulnerability:** The function `generate_gnu_gantt_chart` passes user-supplied filenames and titles directly into a Gnuplot script string substitution (`gnuplot_gantt.plt`) which allows Command Injection. Furthermore, temporary files are written to a hardcoded shared directory causing race conditions, path traversal, and disk space leaks.
+**Learning:** External script strings containing variables must be strictly sanitized. Temporary paths should be isolated with UUIDs and thoroughly cleaned up after use using try/after blocks. Filenames from Plug.Upload must use Path.basename.
+**Prevention:** Implement `escape_gnuplot_string`, use `Ecto.UUID.generate` for temporary directory generation, and sanitize input titles and filenames to safe charsets.
