@@ -64,7 +64,7 @@ defmodule WraftDocWeb.Api.V1.UserControllerTest do
         )
 
       assert json_response(conn, 404)["errors"] ==
-               "No user with this email.!"
+               "Your email-password combination doesn't match. Please try again.!"
     end
 
     test "returns error when no password is given" do
