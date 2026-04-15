@@ -1695,23 +1695,58 @@ defmodule WraftDoc.Documents do
 
   # Generate a Gantt chart form the given CSV file using Gnuplot CLI.
   defp generate_gnu_gantt_chart(%Plug.Upload{filename: filename, path: path}, title) do
-    File.mkdir_p("temp/gantt_chart_input/")
-    File.mkdir_p("temp/gantt_chart_output/")
-    dest_path = "temp/gantt_chart_input/#{filename}"
-    System.cmd("cp", [path, dest_path])
+    # Sanitize inputs for file path use
+    sanitized_filename =
+      filename
+      |> Path.basename()
+      |> String.replace(~r/[^a-zA-Z0-9_\-\.\ ]/, "")
 
-    dest_path = Path.expand(dest_path)
-    out_name = Path.expand("temp/gantt_chart_output/gantt_#{title}.svg")
+    sanitized_title_for_path =
+      title
+      |> String.replace(~r/[^a-zA-Z0-9_\-\.\ ]/, "")
 
-    script =
-      File.read!("lib/priv/gantt_chart/gnuplot_gantt.plt")
-      |> String.replace("//input//", dest_path)
-      |> String.replace("//out_name//", out_name)
-      |> String.replace("//title//", title)
+    # Sanitize inputs for gnuplot script interpolation
+    escaped_title = escape_gnuplot_string(title)
 
-    File.write("temp/gantt_script.plt", script)
-    file_path = Path.expand("temp/gantt_script.plt")
-    System.cmd("gnuplot", ["-p", file_path])
+    # Use a unique temporary directory to avoid collisions
+    uuid = Ecto.UUID.generate()
+    tmp_dir = Path.join([System.tmp_dir!(), "gantt_chart_#{uuid}"])
+
+    # Ensure output directory exists (persistent)
+    File.mkdir_p!("temp/gantt_chart_output/")
+    out_name = Path.expand("temp/gantt_chart_output/gantt_#{sanitized_title_for_path}.svg")
+
+    try do
+      File.mkdir_p!(tmp_dir)
+
+      dest_path = Path.join(tmp_dir, sanitized_filename)
+      File.cp!(path, dest_path)
+
+      dest_path_escaped = escape_gnuplot_string(Path.expand(dest_path))
+      out_name_escaped = escape_gnuplot_string(out_name)
+
+      script =
+        File.read!("lib/priv/gantt_chart/gnuplot_gantt.plt")
+        |> String.replace("//input//", dest_path_escaped)
+        |> String.replace("//out_name//", out_name_escaped)
+        |> String.replace("//title//", escaped_title)
+
+      script_path = Path.join(tmp_dir, "gantt_script.plt")
+      File.write!(script_path, script)
+
+      System.cmd("gnuplot", ["-p", script_path])
+    after
+      File.rm_rf!(tmp_dir)
+    end
+  end
+
+  defp escape_gnuplot_string(str) do
+    str
+    |> String.replace(~r/[\r\n]/, "")
+    |> String.replace("\\", "\\\\")
+    |> String.replace("\"", "\\\"")
+    |> String.replace("'", "\\'")
+    |> String.replace("`", "\\`")
   end
 
   # Generate bar for gant chart
