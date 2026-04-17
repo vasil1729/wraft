@@ -1,0 +1,7 @@
+## 2024-05-24 - [Auth Timing Attack via Elixir 'with' Statement]
+**Vulnerability:** A timing attack vector existed in `WraftDocWeb.SessionController.create/2`. By using a `with` statement that first checked for an active user status (`%InternalUser{is_deactivated: false} = ...`) before evaluating the expensive `Bcrypt.verify_pass/2` function, an attacker could enumerate account status (and potentially user existence) based on response times. A missing user or a deactivated user would skip the bcrypt hashing delay, resulting in a significantly faster response compared to providing an incorrect password for an active user.
+**Learning:** In Elixir authentication flows, short-circuiting computationally expensive operations (like password hashing) upon encountering a business logic failure (like an inactive status or failed email lookup) introduces severe timing leaks. The `with` statement, which naturally short-circuits on pattern match failures, is risky for auth flows unless carefully structured to ensure constant-time execution paths.
+**Prevention:**
+1. Always evaluate the expensive operation (`Bcrypt.verify_pass/2`) *before* checking secondary business logic flags like `is_deactivated`.
+2. When a user lookup fails, explicitly call `Bcrypt.no_user_verify/0` to simulate the hashing delay.
+3. Prefer nested `if` or `case` statements over `with` for authentication logic to ensure explicit handling of both positive and negative code paths and guarantee that the hashing function is executed exactly once per attempt.
