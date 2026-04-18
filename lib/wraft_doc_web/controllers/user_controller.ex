@@ -40,14 +40,27 @@ defmodule WraftDocWeb.Api.V1.UserController do
 
   @spec signin(Plug.Conn.t(), map) :: Plug.Conn.t()
   def signin(conn, params) do
-    with %User{} = user <- Account.find(params["email"]),
-         %{user: user, tokens: [access_token: access_token, refresh_token: refresh_token]} <-
-           Account.authenticate(%{user: user, password: params["password"]}) do
-      render(conn, "sign-in.json",
-        access_token: access_token,
-        refresh_token: refresh_token,
-        user: user
-      )
+    case Account.find(params["email"]) do
+      %User{} = user ->
+        case Account.authenticate(%{user: user, password: params["password"]}) do
+          %{user: authenticated_user, tokens: [access_token: access_token, refresh_token: refresh_token]} ->
+            render(conn, "sign-in.json",
+              access_token: access_token,
+              refresh_token: refresh_token,
+              user: authenticated_user
+            )
+
+          {:error, _} = error ->
+            error
+        end
+
+      {:error, :invalid_email} ->
+        Bcrypt.no_user_verify()
+        {:error, :invalid}
+
+      _ ->
+        Bcrypt.no_user_verify()
+        {:error, :invalid}
     end
   end
 
@@ -192,17 +205,23 @@ defmodule WraftDocWeb.Api.V1.UserController do
   @spec generate_token(Plug.Conn.t(), map) :: Plug.Conn.t()
   # TODO - Update tests to check correct mail is send
   def generate_token(conn, params) do
-    with %AuthToken{} = auth_token <- AuthTokens.create_password_token(params) do
-      if params["first_time_setup"] do
-        Account.send_password_set_mail(auth_token)
-      else
-        Account.send_password_reset_mail(auth_token)
-      end
+    case AuthTokens.create_password_token(params) do
+      %AuthToken{} = auth_token ->
+        if params["first_time_setup"] do
+          Account.send_password_set_mail(auth_token)
+        else
+          Account.send_password_reset_mail(auth_token)
+        end
 
-      conn
-      |> put_resp_header("content-type", "application/json")
-      |> send_resp(200, Jason.encode!(%{info: "Success"}))
+      _ ->
+        # Do not call Bcrypt.no_user_verify() to avoid DoS vulnerability.
+        # Just fail silently to prevent user enumeration.
+        nil
     end
+
+    conn
+    |> put_resp_header("content-type", "application/json")
+    |> send_resp(200, Jason.encode!(%{info: "Success"}))
   end
 
   @doc """
