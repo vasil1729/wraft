@@ -1,0 +1,4 @@
+## 2024-04-24 - [Timing Attack in SessionController]
+**Vulnerability:** A timing attack vector existed in the `SessionController`'s `create` action where early exits inside a `with` block based on account status (`is_deactivated`) bypassed password verification entirely. Additionally, invalid email addresses returned an error quicker than valid ones because password hashing was skipped.
+**Learning:** In Elixir authentication flows, checking business logic flags (like account suspension) before the slow password verification process exposes account statuses via timing differences. Also, failing user lookups must simulate hashing time.
+**Prevention:** Always verify passwords before checking business logic statuses. Use nested `if` statements or careful logic to ensure `Bcrypt.verify_pass/2` is evaluated exactly once for a valid user, and explicitly call `Bcrypt.no_user_verify()` for non-existent users.
