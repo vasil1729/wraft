@@ -1,0 +1,4 @@
+## 2024-05-27 - [Timing Attack in Auth Flow using With Statement]
+**Vulnerability:** User enumeration timing attack vulnerability in `WraftDocWeb.SessionController.create/2` and `WraftDocWeb.Api.V1.UserController.signin/2`. A short-circuiting `with` statement caused password validation (`Bcrypt.verify_pass/2`) to be skipped entirely when an email was not found, executing much faster and allowing attackers to enumerate registered users by measuring response times.
+**Learning:** Using Elixir's `with` statement for authentication flows can inadvertently introduce timing attacks if it skips computationally expensive operations on failure paths.
+**Prevention:** In authentication flows, avoid relying on early exits for missing users. Always ensure `Bcrypt.verify_pass/2` or simulate its delay by calling `Bcrypt.no_user_verify()` exactly once on failure paths to balance execution times.
