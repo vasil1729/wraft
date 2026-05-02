@@ -1,0 +1,4 @@
+## 2024-05-02 - [Fix Admin Authentication Timing Attack]
+**Vulnerability:** The admin authentication logic (`SessionController.create`) used a `with` statement that exited early if a user was not found. This skipped the computationally expensive `Bcrypt.verify_pass()` operation, allowing attackers to enumerate valid admin emails via timing differences.
+**Learning:** Early exits in authentication flows (like `with` or `cond`) can create timing side-channels. When mitigating timing attacks in Elixir, the slow operation (`Bcrypt.verify_pass()`) or its equivalent simulation (`Bcrypt.no_user_verify()`) must be invoked exactly once on both happy and unhappy paths.
+**Prevention:** Prefer nested `if` statements over `with` for authentication flows to guarantee that password verification logic is not bypassed. Always use `Bcrypt.no_user_verify()` when a user lookup fails to simulate the hashing delay.
