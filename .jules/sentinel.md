@@ -1,0 +1,4 @@
+## 2024-05-05 - Fix timing attack in internal admin session creation
+**Vulnerability:** The internal admin login `SessionController.create/2` was checking `is_deactivated` before `Bcrypt.verify_pass/2` and did not use `Bcrypt.no_user_verify()` for non-existent users. This exposed the login endpoint to user enumeration via timing attack.
+**Learning:** Elixir's `with` statement can easily introduce timing attacks in auth flows if user existence and status checks fail before a computational heavy operation like `Bcrypt.verify_pass()`.
+**Prevention:** Always ensure `Bcrypt.verify_pass()` is executed unconditionally (using `Bcrypt.no_user_verify()` on failure paths) and before checking business logic status flags like `is_deactivated`. Use nested `if` statements over `with` blocks in auth logic to ensure expensive operations are evaluated exactly once.
