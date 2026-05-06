@@ -1,0 +1,4 @@
+## 2024-06-25 - Prevent Timing Attacks in Elixir Authentication Flows
+**Vulnerability:** Timing attack allowing username enumeration because `Bcrypt.verify_pass` was skipped if the user lookup failed (e.g., short-circuiting in `with` statements).
+**Learning:** In Elixir authentication flows, short-circuiting `with` statements upon failed user lookups can cause timing leaks. If `is_deactivated` status check comes before the password verification in `with`, it also allows enumeration of deactivated users.
+**Prevention:** Explicitly call `Bcrypt.no_user_verify()` on failure paths (e.g., `nil` or `{:error, :invalid_email}`) to simulate password hashing delays. Use nested `if`/`case` statements to guarantee that `Bcrypt.verify_pass` evaluates exactly once, and ensure that the password is verified *before* checking business status flags like `is_deactivated`. Also, be careful to use existing fallbacks for returned errors.
