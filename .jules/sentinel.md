@@ -1,0 +1,4 @@
+## 2026-05-08 - Fix timing attack vulnerability in SessionController
+**Vulnerability:** Timing attack vulnerability in admin authentication logic due to `with` statement short-circuiting on failed user lookup without mitigating password hashing delays.
+**Learning:** `Bcrypt.verify_pass/2` computation is slow and its delay must be simulated using `Bcrypt.no_user_verify()` when a user lookup fails. The use of a `with` statement caused early exits on invalid emails, introducing an easily exploitable timing difference that could allow attackers to enumerate valid administrator emails.
+**Prevention:** Avoid `with` statements in authentication paths. Prefer nested `if` blocks to explicitly manage paths for user non-existence (calling `no_user_verify()`), incorrect passwords, and checking post-auth flags (like `is_deactivated`) sequentially.
