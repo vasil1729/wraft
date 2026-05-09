@@ -1,0 +1,4 @@
+## 2026-05-09 - [Prevent Timing Attack in Authentication Flow]
+**Vulnerability:** The authentication flow in `SessionController` evaluated `Bcrypt.verify_pass/2` only after checking if `user.is_deactivated` was false via a `with` statement. If a user did not exist or was deactivated, the expensive password hash check was skipped. Additionally, early returns exposed differing response times based on account existence.
+**Learning:** Using `with` statements in Elixir for authentication can lead to timing side-channels and user enumeration if the password is not verified before returning failures or evaluating business logic rules (like `is_deactivated`).
+**Prevention:** Avoid `with` statements that conditionally evaluate `Bcrypt.verify_pass/2`. Prefer nested `if` statements so password checking happens exactly once, before other logic checks. Additionally, use `Bcrypt.no_user_verify()` for failed user lookups to simulate the delay of hashing.
