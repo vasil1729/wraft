@@ -1,0 +1,4 @@
+## 2024-05-10 - Fix Timing Attacks in Authentication Flows
+**Vulnerability:** Timing attacks in authentication allowed user enumeration. The `with` statement short-circuited on unfound users or deactivated users, skipping the slow `Bcrypt.verify_pass/2` computation, leading to measurable timing differences.
+**Learning:** In Elixir, using `with` or early exits before password hashing exposes timing leaks. Additionally, business logic checks (like `is_deactivated`) must occur *after* password verification, otherwise an attacker can enumerate account statuses by timing the response.
+**Prevention:** Use nested `if` statements for authentication flows to guarantee that `Bcrypt.verify_pass/2` is evaluated before checking account flags. If a user is not found, use `Bcrypt.no_user_verify()` to simulate the computational delay.
