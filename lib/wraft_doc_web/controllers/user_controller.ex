@@ -40,14 +40,20 @@ defmodule WraftDocWeb.Api.V1.UserController do
 
   @spec signin(Plug.Conn.t(), map) :: Plug.Conn.t()
   def signin(conn, params) do
-    with %User{} = user <- Account.find(params["email"]),
-         %{user: user, tokens: [access_token: access_token, refresh_token: refresh_token]} <-
-           Account.authenticate(%{user: user, password: params["password"]}) do
-      render(conn, "sign-in.json",
-        access_token: access_token,
-        refresh_token: refresh_token,
-        user: user
-      )
+    case Account.find(params["email"]) do
+      %User{} = user ->
+        with %{user: user, tokens: [access_token: access_token, refresh_token: refresh_token]} <-
+               Account.authenticate(%{user: user, password: params["password"]}) do
+          render(conn, "sign-in.json",
+            access_token: access_token,
+            refresh_token: refresh_token,
+            user: user
+          )
+        end
+
+      _ ->
+        Bcrypt.no_user_verify()
+        {:error, :invalid}
     end
   end
 
@@ -202,6 +208,16 @@ defmodule WraftDocWeb.Api.V1.UserController do
       conn
       |> put_resp_header("content-type", "application/json")
       |> send_resp(200, Jason.encode!(%{info: "Success"}))
+    else
+      {:error, :invalid_email} ->
+        # To prevent user enumeration without introducing DoS (via Bcrypt hashing),
+        # return a generic 200 OK success message even if the user doesn't exist.
+        conn
+        |> put_resp_header("content-type", "application/json")
+        |> send_resp(200, Jason.encode!(%{info: "Success"}))
+
+      error ->
+        error
     end
   end
 
