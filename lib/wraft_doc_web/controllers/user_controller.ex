@@ -40,13 +40,16 @@ defmodule WraftDocWeb.Api.V1.UserController do
 
   @spec signin(Plug.Conn.t(), map) :: Plug.Conn.t()
   def signin(conn, params) do
-    with %User{} = user <- Account.find(params["email"]),
-         %{user: user, tokens: [access_token: access_token, refresh_token: refresh_token]} <-
-           Account.authenticate(%{user: user, password: params["password"]}) do
+    user = Account.find(params["email"])
+    if is_nil(user) or user == {:error, :invalid_email}, do: Bcrypt.no_user_verify()
+
+    with %User{} = found_user <- user,
+         %{user: found_user, tokens: [access_token: access_token, refresh_token: refresh_token]} <-
+           Account.authenticate(%{user: found_user, password: params["password"]}) do
       render(conn, "sign-in.json",
         access_token: access_token,
         refresh_token: refresh_token,
-        user: user
+        user: found_user
       )
     end
   end
