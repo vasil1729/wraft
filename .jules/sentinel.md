@@ -1,0 +1,4 @@
+## 2026-05-22 - Prevent timing attack in `with` statement
+**Vulnerability:** Elixir `with` statements can be susceptible to timing attacks when user lookup fails, or if business logic (like `is_deactivated`) is checked before verifying the password hash (`Bcrypt.verify_pass/2`). This allows an attacker to enumerate account existence or status by measuring response times.
+**Learning:** Checking business logic before the slow hash operation or short-circuiting on `nil` user lookups creates a measurable timing difference. `Bcrypt.no_user_verify()` must be used to simulate hashing time when a user is not found, and password verification must always occur before status checks.
+**Prevention:** Extract the user lookup, conditionally call `Bcrypt.no_user_verify()` if the user is `nil`, and ensure the `Bcrypt.verify_pass/2` step happens *before* any other business logic checks (e.g., `user.is_deactivated`) within the `with` statement.
