@@ -1,0 +1,4 @@
+## 2024-05-26 - [Authentication Timing Attack Mitigation]
+**Vulnerability:** Timing attack allowing user enumeration. The login flow did not hash passwords when the user lookup failed or failed early if the account was deactivated.
+**Learning:** To prevent timing attacks, always run `Bcrypt.no_user_verify()` when a user lookup fails. Also, password verification must happen before any status checks (like `is_deactivated`) inside authentication `with` blocks so that time taken remains uniform regardless of account status.
+**Prevention:** Place `Bcrypt.no_user_verify()` delays in controllers (not contexts) and always order password checks before business logic flags in authentication flows.
