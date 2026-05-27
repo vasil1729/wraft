@@ -1,0 +1,4 @@
+## 2025-05-27 - [CRITICAL] Fix Timing Attack and Account Status Enumeration in Session Auth
+**Vulnerability:** In `SessionController.create`, the `with` statement checks the user's `is_deactivated` status and checks if the user exists before running `Bcrypt.verify_pass()`. If a user does not exist or is deactivated, it exits early, bypassing the expensive bcrypt computation. This allows an attacker to enumerate valid emails and infer account statuses based on response timing.
+**Learning:** Checking business logic flags (like `is_deactivated`) before verifying passwords, or failing to call `Bcrypt.no_user_verify()` when user lookup fails, creates severe timing attack vectors in authentication flows.
+**Prevention:** Always extract the user lookup, inject `Bcrypt.no_user_verify()` if the user is `nil` to simulate hashing delay, and ensure `Bcrypt.verify_pass` is always executed *before* any status checks within the `with` statement.
