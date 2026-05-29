@@ -1,0 +1,4 @@
+## 2024-05-29 - [Timing Attack and Enumeration Fix in Auth Flow]
+**Vulnerability:** The admin authentication logic checked user status before verifying the password and lacked delay matching when a user lookup failed. This allowed for timing attacks to enumerate valid emails and fast-failing to enumerate deactivated accounts.
+**Learning:** Early exits or conditional pattern matching in authentication processes like `with` statements can expose sensitive information regarding the existence or status of a user account.
+**Prevention:** Always ensure the slow path (e.g. hashing) operates for all login attempts, and prioritize validating credentials (`Bcrypt.verify_pass/2`) *before* checking business rules like `is_deactivated` to maintain constant-time behavior across failure cases.
