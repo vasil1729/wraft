@@ -1,0 +1,4 @@
+## 2024-05-30 - [Timing Attacks via Short-Circuiting Auth Flows]
+**Vulnerability:** User enumeration timing attack caused by early exiting in `with` statements without simulating password verification hashing delays (`Bcrypt.no_user_verify()`), and deducing account status (`is_deactivated`) due to checking it prior to `Bcrypt.verify_pass/2`.
+**Learning:** In Elixir, short-circuiting a `with` statement upon a failed user lookup or returning early on a boolean flag check causes timing differences that attackers can use to enumerate accounts or statuses.
+**Prevention:** Always extract user lookup and conditionally run `Bcrypt.no_user_verify()` on failure paths. Verify passwords using `Bcrypt.verify_pass/2` *before* checking business logic status flags like `is_deactivated` to ensure a consistent timing footprint.
