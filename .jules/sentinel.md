@@ -1,0 +1,4 @@
+## 2024-06-11 - Timing attack user enumeration in Elixir Authentication Flows
+**Vulnerability:** User enumeration timing attack
+**Learning:** Using `with` blocks that conditionally execute `Bcrypt.verify_pass/2` depending on whether `Account.find/1` returns a user causes a timing attack. An attacker can determine if an email exists because incorrect passwords for existing emails take longer to process than requests for non-existent emails.
+**Prevention:** In Elixir login flows, explicitly extract user lookups before `with` blocks. If no user is found, call `Bcrypt.no_user_verify()` to simulate the delay of password verification and return a generic error. Ensure the failure paths properly pass the generic error to the fallback controller.
