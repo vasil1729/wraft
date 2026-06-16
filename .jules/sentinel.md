@@ -1,0 +1,4 @@
+## 2024-03-24 - [User Enumeration Timing Attack]
+**Vulnerability:** User enumeration is possible via timing attacks because Elixir `with` statements short-circuit on failed lookups, bypassing password hashing delays. Additionally, `is_deactivated` flags were evaluated before password checks, introducing further status enumeration risks.
+**Learning:** In Elixir authentication controllers (e.g. `session_controller.ex`, `user_controller.ex`), user lookup must be extracted. If a user is missing or invalid, `Bcrypt.no_user_verify()` must be explicitly called before returning. Business logic (like `is_deactivated`) must be checked *after* successful password verification.
+**Prevention:** Always wrap user lookups in a case statement to invoke `Bcrypt.no_user_verify()` on the unhappy path, and place status logic inside the password verification block, ensuring generic error tuples `{:error, :invalid}` are returned.
