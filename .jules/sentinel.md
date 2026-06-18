@@ -1,0 +1,8 @@
+## 2024-06-25 - Fix Authentication Timing Attacks and Enumeration Vulnerabilities
+**Vulnerability:** The application had timing attack vulnerabilities in user login endpoints (`SessionController.create` and `UserController.signin`) where bcrypt validation was either bypassed or executed conditionally based on user existence and status, allowing attackers to enumerate valid users and their active/deactivated statuses based on response times. Additionally, the password reset token generation endpoint (`UserController.generate_token`) allowed email enumeration by behaving differently for existing vs non-existing emails.
+**Learning:** In Elixir `with` statements, early failures drop out immediately. If user lookup fails, subsequent expensive operations like `Bcrypt.verify_pass` are skipped, causing a detectable timing difference. If we use `cond` or early exits to check things like `is_deactivated` *before* verifying the password, we leak that information via timing. For password resets, returning different HTTP responses or errors when an email is not found allows attackers to harvest valid emails.
+**Prevention:**
+1. Always run a dummy bcrypt hash (`Bcrypt.no_user_verify()`) when user lookup fails in login flows to normalize response times.
+2. Ensure the expensive password verification operation happens *before* any business logic checks (like `is_deactivated`).
+3. Return a generic success message (200 OK) for password reset requests, regardless of whether the email exists.
+4. IMPORTANT: Do NOT run `Bcrypt.no_user_verify()` on the unhappy path of password resets, as this introduces a CPU-exhaustion DoS risk since the happy path does not verify passwords.
