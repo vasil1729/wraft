@@ -40,7 +40,24 @@ defmodule WraftDocWeb.Api.V1.UserController do
 
   @spec signin(Plug.Conn.t(), map) :: Plug.Conn.t()
   def signin(conn, params) do
-    with %User{} = user <- Account.find(params["email"]),
+    # 🛡️ Sentinel: Fix timing attack and prevent email enumeration
+    # Explicitly call Bcrypt.no_user_verify() when user is not found to prevent timing attacks.
+    # Map {:error, :invalid_email} to {:error, :invalid} to prevent enumeration.
+    user_result =
+      case Account.find(params["email"]) do
+        %User{} = user ->
+          user
+
+        {:error, :invalid_email} ->
+          Bcrypt.no_user_verify()
+          {:error, :invalid}
+
+        error ->
+          Bcrypt.no_user_verify()
+          error
+      end
+
+    with %User{} = user <- user_result,
          %{user: user, tokens: [access_token: access_token, refresh_token: refresh_token]} <-
            Account.authenticate(%{user: user, password: params["password"]}) do
       render(conn, "sign-in.json",
@@ -48,6 +65,8 @@ defmodule WraftDocWeb.Api.V1.UserController do
         refresh_token: refresh_token,
         user: user
       )
+    else
+      error -> error
     end
   end
 
@@ -192,17 +211,24 @@ defmodule WraftDocWeb.Api.V1.UserController do
   @spec generate_token(Plug.Conn.t(), map) :: Plug.Conn.t()
   # TODO - Update tests to check correct mail is send
   def generate_token(conn, params) do
-    with %AuthToken{} = auth_token <- AuthTokens.create_password_token(params) do
-      if params["first_time_setup"] do
-        Account.send_password_set_mail(auth_token)
-      else
-        Account.send_password_reset_mail(auth_token)
-      end
+    # 🛡️ Sentinel: Prevent email enumeration on password reset endpoint
+    # We must return a 200 OK "Success" response regardless of whether the email lookup succeeds or fails.
+    # We do NOT use Bcrypt.no_user_verify() here to avoid DoS vulnerabilities.
+    case AuthTokens.create_password_token(params) do
+      %AuthToken{} = auth_token ->
+        if params["first_time_setup"] do
+          Account.send_password_set_mail(auth_token)
+        else
+          Account.send_password_reset_mail(auth_token)
+        end
 
-      conn
-      |> put_resp_header("content-type", "application/json")
-      |> send_resp(200, Jason.encode!(%{info: "Success"}))
+      _ ->
+        :ok
     end
+
+    conn
+    |> put_resp_header("content-type", "application/json")
+    |> send_resp(200, Jason.encode!(%{info: "Success"}))
   end
 
   @doc """

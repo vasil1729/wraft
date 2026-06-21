@@ -1,0 +1,4 @@
+## 2025-02-23 - [Elixir `with` Statement Timing Attacks]
+**Vulnerability:** Timing attacks and account enumeration via short-circuited `with` statements before slow hashing operations.
+**Learning:** In Elixir authentication flows, placing user lookups (e.g., `Account.find/1`) or account status checks (e.g., `is_deactivated: false`) directly in a `with` statement alongside `Bcrypt.verify_pass/2` allows attackers to bypass the slow password check and instantly receive a failure response if the user doesn't exist or is deactivated. This difference in response time exposes whether an email/account exists.
+**Prevention:** Always extract user lookups into a defensive `case` statement. If the lookup fails, explicitly call `Bcrypt.no_user_verify()` to simulate the delay before returning the generic error. Then, in the `with` statement or nested logic, perform `Bcrypt.verify_pass/2` before evaluating status flags like `is_deactivated`.
