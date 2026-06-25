@@ -1,0 +1,4 @@
+## 2024-05-15 - [Timing Attack & User Enumeration in Auth Flow]
+**Vulnerability:** A missing bcrypt hash delay on the failed user lookup path in `WraftDocWeb.Api.V1.UserController.signin/2` allowed attackers to enumerate existing users via timing attacks. Additionally, returning `{:error, :invalid_email}` leaked whether a given email was registered in the application.
+**Learning:** Elixir's `with` statement short-circuits on the first failure. Without an explicit fallback to add the dummy hash computation, non-existent users fail faster than existing ones. Furthermore, error tuples returned from the `with` statement must be generalized (e.g., `{:error, :invalid}`) to hide details from the fallback controller.
+**Prevention:** Always use `Bcrypt.no_user_verify()` on the unhappy path when users are not found during login. Remap specific failure errors to a generic `{:error, :invalid}` before returning them so `FallbackController` doesn't leak enumeration information.
