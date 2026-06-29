@@ -1,0 +1,4 @@
+## 2024-11-20 - [Fix timing attack in Auth endpoints]
+**Vulnerability:** Timing attack via user enumeration in the login flow. By observing response times, attackers could differentiate between existing and non-existing email addresses because password hashing was only performed when the user existed.
+**Learning:** `Bcrypt.verify_pass/2` relies on a valid user hash. Short-circuiting `with` statements without a delay leaks email validity.
+**Prevention:** Unconditionally simulate password hashing via `Bcrypt.no_user_verify/0` on invalid email lookup paths before completing the response or evaluating business logic status.
