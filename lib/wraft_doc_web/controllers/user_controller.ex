@@ -27,6 +27,7 @@ defmodule WraftDocWeb.Api.V1.UserController do
 
   @doc """
   User Login.
+  Includes protections against timing attacks and user enumeration.
   """
   operation(:signin,
     summary: "User sign in",
@@ -40,7 +41,22 @@ defmodule WraftDocWeb.Api.V1.UserController do
 
   @spec signin(Plug.Conn.t(), map) :: Plug.Conn.t()
   def signin(conn, params) do
-    with %User{} = user <- Account.find(params["email"]),
+    user_lookup =
+      case Account.find(params["email"]) do
+        %User{} = user ->
+          user
+
+        error ->
+          Bcrypt.no_user_verify()
+
+          if error == {:error, :invalid_email} do
+            {:error, :invalid}
+          else
+            error
+          end
+      end
+
+    with %User{} = user <- user_lookup,
          %{user: user, tokens: [access_token: access_token, refresh_token: refresh_token]} <-
            Account.authenticate(%{user: user, password: params["password"]}) do
       render(conn, "sign-in.json",
@@ -176,6 +192,7 @@ defmodule WraftDocWeb.Api.V1.UserController do
 
   @doc """
   Generate auth token for password reset for the user with the given email ID.
+  Returns a generic success response to prevent user enumeration.
   """
   operation(:generate_token,
     summary: "Generate token",
@@ -202,6 +219,11 @@ defmodule WraftDocWeb.Api.V1.UserController do
       conn
       |> put_resp_header("content-type", "application/json")
       |> send_resp(200, Jason.encode!(%{info: "Success"}))
+    else
+      _ ->
+        conn
+        |> put_resp_header("content-type", "application/json")
+        |> send_resp(200, Jason.encode!(%{info: "Success"}))
     end
   end
 
