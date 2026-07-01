@@ -27,6 +27,7 @@ defmodule WraftDocWeb.Api.V1.UserController do
 
   @doc """
   User Login.
+  Includes protections against timing attacks and user enumeration.
   """
   operation(:signin,
     summary: "User sign in",
@@ -191,6 +192,7 @@ defmodule WraftDocWeb.Api.V1.UserController do
 
   @doc """
   Generate auth token for password reset for the user with the given email ID.
+  Returns a generic success response to prevent user enumeration.
   """
   operation(:generate_token,
     summary: "Generate token",
