@@ -1,0 +1,4 @@
+## 2024-05-24 - Gnuplot script injection and temp file vulnerability
+**Vulnerability:** Gnuplot script injection acts like OS command injection if string variables are not escaped; always ensure variables passed into `.plt` files are strictly escaped. Furthermore, the temp files were not cleaned up correctly leading to disk space leaks.
+**Learning:** We need to explicitly escape string variables (like newlines, backslashes, quotes) passed into `.plt` files and make sure to use UUID-based subdirectories within `System.tmp_dir!()` to prevent collisions and use `try/after` blocks to properly cleanup temporary directories.
+**Prevention:** Always escape variables going into templated files executed by external processes, carefully manage temporary files via temporary UUID directories and use try/after blocks to ensure cleanup.
