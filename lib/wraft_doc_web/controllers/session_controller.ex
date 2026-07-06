@@ -13,8 +13,17 @@ defmodule WraftDocWeb.SessionController do
   end
 
   def create(conn, %{"session" => params}) do
-    with %InternalUser{is_deactivated: false} = user <-
-           InternalUsers.get_by_email(params["email"]),
+    user_result =
+      case InternalUsers.get_by_email(params["email"]) do
+        %InternalUser{} = user ->
+          user
+
+        error ->
+          Bcrypt.no_user_verify()
+          error
+      end
+
+    with %InternalUser{is_deactivated: false} = user <- user_result,
          true <- Bcrypt.verify_pass(params["password"], user.encrypted_password) do
       conn
       |> put_session(:admin_id, user.id)
