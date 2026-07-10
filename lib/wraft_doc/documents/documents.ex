@@ -1695,23 +1695,39 @@ defmodule WraftDoc.Documents do
 
   # Generate a Gantt chart form the given CSV file using Gnuplot CLI.
   defp generate_gnu_gantt_chart(%Plug.Upload{filename: filename, path: path}, title) do
-    File.mkdir_p("temp/gantt_chart_input/")
-    File.mkdir_p("temp/gantt_chart_output/")
-    dest_path = "temp/gantt_chart_input/#{filename}"
-    System.cmd("cp", [path, dest_path])
+    uuid = Ecto.UUID.generate()
+    tmp_dir = Path.join([System.tmp_dir!(), "gantt_chart", uuid])
+    File.mkdir_p!(tmp_dir)
 
-    dest_path = Path.expand(dest_path)
-    out_name = Path.expand("temp/gantt_chart_output/gantt_#{title}.svg")
+    safe_title = String.replace(title, ~r/[^a-zA-Z0-9_\-\.\ ]/, "")
+    safe_filename = String.replace(filename, ~r/[^a-zA-Z0-9_\-\.\ ]/, "")
+
+    dest_path = Path.join(tmp_dir, safe_filename)
+    File.cp!(path, dest_path)
+
+    # Note: Gantt output directory requires persistence as it may be served later.
+    File.mkdir_p!("temp/gantt_chart_output/")
+    out_name = Path.expand("temp/gantt_chart_output/gantt_#{safe_title}.svg")
+
+    # Sanitize inputs to prevent Gnuplot script injection
+    safe_dest_path_str = dest_path |> String.replace("\"", "\\\"") |> String.replace("'", "\\'") |> String.replace("`", "") |> String.replace("\\", "\\\\") |> String.replace("\n", "") |> String.replace("\r", "")
+    safe_out_name_str = out_name |> String.replace("\"", "\\\"") |> String.replace("'", "\\'") |> String.replace("`", "") |> String.replace("\\", "\\\\") |> String.replace("\n", "") |> String.replace("\r", "")
+    safe_title_str = safe_title |> String.replace("\"", "\\\"") |> String.replace("'", "\\'") |> String.replace("`", "") |> String.replace("\\", "\\\\") |> String.replace("\n", "") |> String.replace("\r", "")
 
     script =
       File.read!("lib/priv/gantt_chart/gnuplot_gantt.plt")
-      |> String.replace("//input//", dest_path)
-      |> String.replace("//out_name//", out_name)
-      |> String.replace("//title//", title)
+      |> String.replace("//input//", safe_dest_path_str)
+      |> String.replace("//out_name//", safe_out_name_str)
+      |> String.replace("//title//", safe_title_str)
 
-    File.write("temp/gantt_script.plt", script)
-    file_path = Path.expand("temp/gantt_script.plt")
-    System.cmd("gnuplot", ["-p", file_path])
+    script_path = Path.join(tmp_dir, "gantt_script.plt")
+    File.write!(script_path, script)
+
+    try do
+      System.cmd("gnuplot", ["-p", script_path])
+    after
+      File.rm_rf!(tmp_dir)
+    end
   end
 
   # Generate bar for gant chart
