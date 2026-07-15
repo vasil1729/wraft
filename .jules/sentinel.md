@@ -1,0 +1,4 @@
+## 2024-07-16 - Timing Attack and Enumeration via Fallback Controller
+**Vulnerability:** In Elixir login flows, failing user lookups inside `with` blocks passed specific error tuples (like `{:error, :invalid_email}`) directly to `FallbackController`. This allowed users to enumerate valid emails based on the error response. In addition, no `Bcrypt.no_user_verify()` hashing delay was added on the missing user path, creating a timing attack vulnerability.
+**Learning:** You must completely extract the `Account.find/1` into a `case` statement prior to the `with` block. This allows explicitly calling `Bcrypt.no_user_verify()` and remapping specific errors to a generic `{:error, :invalid}` for the FallbackController.
+**Prevention:** In Elixir, do not rely purely on `with` error fallback for authentication flows. Instead, ensure the lookup is isolated into a case statement so you can enforce hashing delays and generic error messages on any failure branch.
