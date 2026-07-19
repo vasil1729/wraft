@@ -1695,23 +1695,42 @@ defmodule WraftDoc.Documents do
 
   # Generate a Gantt chart form the given CSV file using Gnuplot CLI.
   defp generate_gnu_gantt_chart(%Plug.Upload{filename: filename, path: path}, title) do
-    File.mkdir_p("temp/gantt_chart_input/")
-    File.mkdir_p("temp/gantt_chart_output/")
-    dest_path = "temp/gantt_chart_input/#{filename}"
-    System.cmd("cp", [path, dest_path])
+    # 🛡️ Sentinel: Fix OS command injection, path traversal and tmp file cleanup
+    safe_filename = Regex.replace(~r/[^a-zA-Z0-9_\-\.\ ]/, filename, "")
+    safe_title_file = Regex.replace(~r/[^a-zA-Z0-9_\-\.\ ]/, title, "")
 
-    dest_path = Path.expand(dest_path)
-    out_name = Path.expand("temp/gantt_chart_output/gantt_#{title}.svg")
+    safe_title_var =
+      title
+      |> String.replace("\\", "\\\\")
+      |> String.replace("\"", "\\\"")
+      |> String.replace("'", "\\'")
+      |> String.replace("`", "\\`")
+      |> String.replace("\n", "")
+      |> String.replace("\r", "")
+
+    temp_dir = "temp/gantt_chart_input/#{Ecto.UUID.generate()}/"
+    File.mkdir_p!(temp_dir)
+    File.mkdir_p!("temp/gantt_chart_output/")
+
+    dest_path = Path.join(temp_dir, safe_filename)
+    File.cp!(path, dest_path)
+
+    dest_path_exp = Path.expand(dest_path)
+    out_name_exp = Path.expand("temp/gantt_chart_output/gantt_#{safe_title_file}.svg")
 
     script =
       File.read!("lib/priv/gantt_chart/gnuplot_gantt.plt")
-      |> String.replace("//input//", dest_path)
-      |> String.replace("//out_name//", out_name)
-      |> String.replace("//title//", title)
+      |> String.replace("//input//", dest_path_exp)
+      |> String.replace("//out_name//", out_name_exp)
+      |> String.replace("//title//", safe_title_var)
 
-    File.write("temp/gantt_script.plt", script)
-    file_path = Path.expand("temp/gantt_script.plt")
-    System.cmd("gnuplot", ["-p", file_path])
+    script_path = Path.join(temp_dir, "gantt_script.plt")
+    File.write!(script_path, script)
+
+    result = System.cmd("gnuplot", ["-p", Path.expand(script_path)])
+    File.rm_rf!(temp_dir)
+
+    result
   end
 
   # Generate bar for gant chart
