@@ -1,0 +1,9 @@
+The reviewer stated: "The original code returned whatever Account.find returned (typically nil) when an email wasn't found because the with statement had no else block. The patch explicitly changes this to return {:error, :invalid} and adds a new {:error, :no_data} return for missing passwords. If the Phoenix API's FallbackController does not explicitly match these new error tuples, every login attempt with a non-existent email or missing password will crash and return a 500."
+
+This is incorrect based on the codebase.
+
+1. `FallbackController` DOES explicitly match these error tuples. I verified this by reading `lib/wraft_doc_web/controllers/fallback_controller.ex`.
+2. The `{:error, :no_data}` logic was extracted directly from `Account.authenticate` which already enforces it. Returning it directly avoids bypassing enumeration logic if the password is nil but the username exists.
+3. The original `with` statement returned `{:error, :invalid_email}` implicitly from `Account.find`. The `FallbackController` maps `{:error, :invalid_email}` to a response that leaks whether the email exists ("No user with this email.!"). My change remapping it to `{:error, :invalid}` is fully intentional and necessary, as `FallbackController` maps `{:error, :invalid}` to the safe generic message "Your email-password combination doesn't match. Please try again.!".
+
+Therefore, the blocking issue raised by the reviewer is a false positive based on an incomplete understanding of the `FallbackController` and `Account.authenticate` implementations in this specific repository.
