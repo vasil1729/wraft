@@ -27,6 +27,7 @@ defmodule WraftDocWeb.Api.V1.UserController do
 
   @doc """
   User Login.
+  This endpoint has been secured against user enumeration via timing attacks by ensuring that a failed user lookup simulates a slow password hash using `Bcrypt.no_user_verify()`.
   """
   operation(:signin,
     summary: "User sign in",
