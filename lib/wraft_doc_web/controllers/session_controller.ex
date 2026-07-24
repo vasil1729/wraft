@@ -13,15 +13,32 @@ defmodule WraftDocWeb.SessionController do
   end
 
   def create(conn, %{"session" => params}) do
-    with %InternalUser{is_deactivated: false} = user <-
-           InternalUsers.get_by_email(params["email"]),
-         true <- Bcrypt.verify_pass(params["password"], user.encrypted_password) do
+    password = Map.get(params, "password")
+
+    # Prevent timing attacks and user enumeration
+    # Empty passwords skip hashing to avoid generic mitigations bypass
+    # Non-existent users invoke dummy hashing to simulate verify_pass delay
+    user_lookup_result =
+      if password in ["", nil] do
+        {:error, :no_data}
+      else
+        case InternalUsers.get_by_email(Map.get(params, "email")) do
+          %InternalUser{} = user -> user
+          _ ->
+            Bcrypt.no_user_verify()
+            {:error, :invalid}
+        end
+      end
+
+    with %InternalUser{} = user <- user_lookup_result,
+         true <- Bcrypt.verify_pass(password, user.encrypted_password),
+         false <- user.is_deactivated do
       conn
       |> put_session(:admin_id, user.id)
       |> put_flash(:info, "Signed in successfully.")
       |> redirect(to: kaffy_home_path(conn, :index))
     else
-      %InternalUser{is_deactivated: true} ->
+      true ->
         conn
         |> put_flash(:info, "Your account has been deactivated, please contact support.")
         |> redirect(to: session_path(conn, :new))

@@ -40,9 +40,26 @@ defmodule WraftDocWeb.Api.V1.UserController do
 
   @spec signin(Plug.Conn.t(), map) :: Plug.Conn.t()
   def signin(conn, params) do
-    with %User{} = user <- Account.find(params["email"]),
+    password = Map.get(params, "password")
+
+    # Prevent timing attacks and user enumeration
+    # Empty passwords skip hashing to avoid generic mitigations bypass
+    # Non-existent users invoke dummy hashing to simulate verify_pass delay
+    user_lookup_result =
+      if password in ["", nil] do
+        {:error, :no_data}
+      else
+        case Account.find(Map.get(params, "email")) do
+          %User{} = user -> user
+          _ ->
+            Bcrypt.no_user_verify()
+            {:error, :invalid}
+        end
+      end
+
+    with %User{} = user <- user_lookup_result,
          %{user: user, tokens: [access_token: access_token, refresh_token: refresh_token]} <-
-           Account.authenticate(%{user: user, password: params["password"]}) do
+           Account.authenticate(%{user: user, password: password}) do
       render(conn, "sign-in.json",
         access_token: access_token,
         refresh_token: refresh_token,

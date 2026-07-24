@@ -1,0 +1,4 @@
+## 2024-05-24 - [Timing Attack Mitigation in Elixir Auth Flows]
+**Vulnerability:** User enumeration via timing attack in `UserController.signin/2` and `SessionController.create/2`.
+**Learning:** Returning early or skipping `Bcrypt.verify_pass/2` when a user lookup fails causes a noticeable timing difference, allowing attackers to guess valid emails. In Phoenix, directly replacing `with` statements with `if` blocks can break implicit error fallthrough to `FallbackController`. Adding comments to explain why dummy hashing logic exists is critical for future maintainers.
+**Prevention:** Extract the user lookup into a `case` statement before password verification. On the failure path (`_ ->`), explicitly invoke `Bcrypt.no_user_verify()` to simulate the delay, return a generic error tuple (like `{:error, :invalid}`), and pass the result into the original `with` block to preserve standard routing. Include comments explaining the security rationale.
