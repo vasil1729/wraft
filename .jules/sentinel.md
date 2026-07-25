@@ -1,0 +1,4 @@
+## 2024-07-25 - Fix User Enumeration and Timing Attack in Elixir With Statements
+**Vulnerability:** The application was vulnerable to timing attacks and user enumeration because `Bcrypt.verify_pass/2` was only executed if the user existed (was found via `Account.find`). Attackers could distinguish between valid and invalid emails by observing the response time difference due to missing `Bcrypt.no_user_verify()` on the unhappy path.
+**Learning:** In Elixir authentication flows, short-circuiting `with` statements upon failed user lookups can cause timing leaks. Explicitly calling `Bcrypt.no_user_verify()` on failure paths simulates password hashing delays.
+**Prevention:** Always extract the user lookup into a defensive `case` statement before the `with` block to guarantee `Bcrypt.no_user_verify()` executes for any unexpected return value (like a failed lookup), mapping it directly to a generic error tuple (like `{:error, :invalid}`) to prevent enumeration.
