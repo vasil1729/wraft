@@ -1,0 +1,4 @@
+## 2026-07-26 - Timing Attack Mitigation in Authentication Flows
+**Vulnerability:** User enumeration via timing attacks during login, and explicit enumeration in password reset due to implicit error fallthrough leaking `{:error, :invalid_email}` via `WraftDocWeb.FallbackController`.
+**Learning:** `with` statement failures on `Account.find/1` return early without taking bcrypt delay, allowing enumeration. The password reset flow failed identically, returning a 404 with email non-existence instead of a 200 generic success.
+**Prevention:** Always extract user lookups in auth flows to a `case` statement, calling `Bcrypt.no_user_verify()` on failure and remap `{:error, :invalid_email}` to `{:error, :invalid}`. For password reset flows, avoid `with` statement fallthrough and return 200 OK unconditionally.
