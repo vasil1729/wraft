@@ -1,0 +1,4 @@
+## 2024-11-26 - Timing Attack and User Enumeration in Elixir Auth Flows
+**Vulnerability:** Elixir authentication flows used `with` statements without handling the unhappy path of user existence lookups securely. Specifically, invalid emails and false users leaked their non-existence through missing artificial delays and distinct error messages.
+**Learning:** `with` statements often fail immediately upon encountering missing users, skipping the slow `Bcrypt.verify_pass()` function entirely. Placing `Bcrypt.no_user_verify()` incorrectly (like in `else` blocks that also evaluate password hashes) leads to either double-hashing DoS or failed simulated delays.
+**Prevention:** Extract user lookups into a separate `case` block containing `Bcrypt.no_user_verify()` on the wildcard branch `_ ->` before running the `with` statement. Return safe, generic error tuples like `{:error, :invalid}` for FallbackController routing.
