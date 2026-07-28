@@ -30,11 +30,12 @@ defmodule WraftDocWeb.Api.V1.UserController do
   """
   operation(:signin,
     summary: "User sign in",
-    description: "User sign in API",
+    description: "User sign in API. Mitigates user enumeration by returning a generic invalid response and simulating bcrypt hashing delays for non-existent users.",
     request_body: {"User to trying to login", "application/json", Schemas.User.UserLoginRequest},
     responses: [
       ok: {"Ok", "application/json", Schemas.User.UserToken},
-      unprocessable_entity: {"Unprocessable Entity", "application/json", Schemas.Error}
+      unprocessable_entity: {"Unprocessable Entity", "application/json", Schemas.Error},
+      not_found: {"Not Found", "application/json", Schemas.Error}
     ]
   )
 
@@ -189,7 +190,7 @@ defmodule WraftDocWeb.Api.V1.UserController do
   """
   operation(:generate_token,
     summary: "Generate token",
-    description: "Api to generate token to update password",
+    description: "Api to generate token to update password. Mitigates user enumeration by always returning a success response, even if the user does not exist.",
     request_body:
       {"Details to generate token", "application/json",
        Schemas.User.GeneratePasswordSetTokenRequest},
