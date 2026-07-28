@@ -30,17 +30,28 @@ defmodule WraftDocWeb.Api.V1.UserController do
   """
   operation(:signin,
     summary: "User sign in",
-    description: "User sign in API",
+    description: "User sign in API. Mitigates user enumeration by returning a generic invalid response and simulating bcrypt hashing delays for non-existent users.",
     request_body: {"User to trying to login", "application/json", Schemas.User.UserLoginRequest},
     responses: [
       ok: {"Ok", "application/json", Schemas.User.UserToken},
-      unprocessable_entity: {"Unprocessable Entity", "application/json", Schemas.Error}
+      unprocessable_entity: {"Unprocessable Entity", "application/json", Schemas.Error},
+      not_found: {"Not Found", "application/json", Schemas.Error}
     ]
   )
 
   @spec signin(Plug.Conn.t(), map) :: Plug.Conn.t()
   def signin(conn, params) do
-    with %User{} = user <- Account.find(params["email"]),
+    user_or_error =
+      case Account.find(params["email"]) do
+        %User{} = user ->
+          user
+
+        _ ->
+          Bcrypt.no_user_verify()
+          {:error, :invalid}
+      end
+
+    with %User{} = user <- user_or_error,
          %{user: user, tokens: [access_token: access_token, refresh_token: refresh_token]} <-
            Account.authenticate(%{user: user, password: params["password"]}) do
       render(conn, "sign-in.json",
@@ -179,7 +190,7 @@ defmodule WraftDocWeb.Api.V1.UserController do
   """
   operation(:generate_token,
     summary: "Generate token",
-    description: "Api to generate token to update password",
+    description: "Api to generate token to update password. Mitigates user enumeration by always returning a success response, even if the user does not exist.",
     request_body:
       {"Details to generate token", "application/json",
        Schemas.User.GeneratePasswordSetTokenRequest},
@@ -192,17 +203,21 @@ defmodule WraftDocWeb.Api.V1.UserController do
   @spec generate_token(Plug.Conn.t(), map) :: Plug.Conn.t()
   # TODO - Update tests to check correct mail is send
   def generate_token(conn, params) do
-    with %AuthToken{} = auth_token <- AuthTokens.create_password_token(params) do
-      if params["first_time_setup"] do
-        Account.send_password_set_mail(auth_token)
-      else
-        Account.send_password_reset_mail(auth_token)
-      end
+    case AuthTokens.create_password_token(params) do
+      %AuthToken{} = auth_token ->
+        if params["first_time_setup"] do
+          Account.send_password_set_mail(auth_token)
+        else
+          Account.send_password_reset_mail(auth_token)
+        end
 
-      conn
-      |> put_resp_header("content-type", "application/json")
-      |> send_resp(200, Jason.encode!(%{info: "Success"}))
+      _ ->
+        nil
     end
+
+    conn
+    |> put_resp_header("content-type", "application/json")
+    |> send_resp(200, Jason.encode!(%{info: "Success"}))
   end
 
   @doc """
