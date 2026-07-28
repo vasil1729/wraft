@@ -1,0 +1,4 @@
+## 2024-05-18 - User Enumeration in Auth Flow
+**Vulnerability:** The application leaks whether a user exists through error messages (`{:error, :invalid_email}` mapped to "No user with this email!") and timing attacks (lack of bcrypt hashing delay when user is not found).
+**Learning:** `with` statements in Elixir can leak timing information if they return early without performing expensive operations like hashing on failure paths. We must explicitly trigger `Bcrypt.no_user_verify()` for invalid users and map specific lookup errors to generic credentials errors.
+**Prevention:** Always extract user lookups into a `case` statement, trigger `Bcrypt.no_user_verify()` on failure paths (e.g., `nil`, `{:error, :invalid_email}`), and map the result to a generic `{:error, :invalid}` to prevent user enumeration.
