@@ -13,23 +13,39 @@ defmodule WraftDocWeb.SessionController do
   end
 
   def create(conn, %{"session" => params}) do
-    with %InternalUser{is_deactivated: false} = user <-
-           InternalUsers.get_by_email(params["email"]),
-         true <- Bcrypt.verify_pass(params["password"], user.encrypted_password) do
-      conn
-      |> put_session(:admin_id, user.id)
-      |> put_flash(:info, "Signed in successfully.")
-      |> redirect(to: kaffy_home_path(conn, :index))
-    else
-      %InternalUser{is_deactivated: true} ->
-        conn
-        |> put_flash(:info, "Your account has been deactivated, please contact support.")
-        |> redirect(to: session_path(conn, :new))
+    password = Map.get(params, "password")
 
-      _ ->
+    if password in ["", nil] do
+      conn
+      |> put_flash(:error, "Please provide the correct login credentials to login.")
+      |> redirect(to: session_path(conn, :new))
+    else
+      user_lookup =
+        case InternalUsers.get_by_email(params["email"]) do
+          %InternalUser{} = user -> user
+          _ ->
+            Bcrypt.no_user_verify()
+            nil
+        end
+
+      with %InternalUser{} = user <- user_lookup,
+           true <- Bcrypt.verify_pass(password, user.encrypted_password),
+           false <- user.is_deactivated do
         conn
-        |> put_flash(:error, "Please provide the correct login credentials to login.")
-        |> redirect(to: session_path(conn, :new))
+        |> put_session(:admin_id, user.id)
+        |> put_flash(:info, "Signed in successfully.")
+        |> redirect(to: kaffy_home_path(conn, :index))
+      else
+        true ->
+          conn
+          |> put_flash(:info, "Your account has been deactivated, please contact support.")
+          |> redirect(to: session_path(conn, :new))
+
+        _ ->
+          conn
+          |> put_flash(:error, "Please provide the correct login credentials to login.")
+          |> redirect(to: session_path(conn, :new))
+      end
     end
   end
 

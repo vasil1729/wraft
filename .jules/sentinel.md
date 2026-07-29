@@ -1,0 +1,4 @@
+## 2024-07-29 - [Fix Timing Attack in Authentication]
+**Vulnerability:** User enumeration via timing attack in `WraftDocWeb.SessionController.create/2` and `WraftDocWeb.Api.V1.UserController.signin/2`.
+**Learning:** `with` statements can exit early on failed user lookups, causing timing leaks. Extracting the lookup into a `case` statement allows unconditionally executing `Bcrypt.no_user_verify()` for non-existent users, simulating password hashing delays.
+**Prevention:** Consistently use explicit user existence checks (e.g., `case` statements) and conditionally invoke `Bcrypt.no_user_verify()` on failure paths to prevent timing-based enumeration. Ensure slow operations like `Bcrypt.verify_pass/2` are invoked exactly once and place business logic checks (like `is_deactivated`) after password verification.
