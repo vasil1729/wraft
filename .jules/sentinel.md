@@ -1,0 +1,4 @@
+## 2024-05-18 - Prevent User Enumeration via Timing Attacks in Auth Flows
+**Vulnerability:** The authentication flow in UserController short-circuits on invalid email lookups without simulating the password hash delay, introducing a timing attack that allows for user enumeration.
+**Learning:** In Elixir with statements, early exits on missing users skip the expensive Bcrypt.verify_pass/2 check.
+**Prevention:** Always extract user lookups into a separate case block before the with statement. In the failure path, explicitly invoke Bcrypt.no_user_verify() and return generic errors to prevent enumeration and timing differences.
