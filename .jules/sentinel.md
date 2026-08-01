@@ -1,0 +1,4 @@
+## 2024-05-24 - Timing Attacks & Enumeration in Elixir `with` statements
+**Vulnerability:** Elixir `with` statements can introduce timing attacks and user enumeration if password verification is inside the `with` block and user lookup failures immediately return an error without a dummy verification delay.
+**Learning:** Returning early from a `with` statement when an `Account.find(email)` fails omits the slow `Bcrypt.verify_pass` operation. This stark difference in response time allows attackers to distinguish between valid and invalid email addresses.
+**Prevention:** Extract user lookups into a `case` statement before the `with` block. If the lookup fails, immediately call `Bcrypt.no_user_verify()` to simulate the computational delay of a real password check, then map the error to a generic `{:error, :invalid}`. Finally, pass the sanitized result into the `with` statement.
