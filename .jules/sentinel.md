@@ -1,0 +1,4 @@
+## 2024-05-24 - [User Enumeration and Timing Attack]
+**Vulnerability:** User enumeration is possible via the signin flow, and missing `Bcrypt.no_user_verify()` for non-existent users allows for a timing attack that could leak user existence.
+**Learning:** Extracting the user lookup into a `case` statement and conditionally calling `Bcrypt.no_user_verify()` on failure ensures consistent timing, mitigating timing attacks. Mapping specific lookup errors to a generic `{:error, :invalid}` prevents user enumeration.
+**Prevention:** Ensure all authentication flows implement consistent timing measures and generic error responses for failed lookups.
