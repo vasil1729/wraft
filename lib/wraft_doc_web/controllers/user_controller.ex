@@ -26,11 +26,11 @@ defmodule WraftDocWeb.Api.V1.UserController do
   tags(["User"])
 
   @doc """
-  User Login.
+  User Login. Mitigates timing attacks by standardizing response time via constant-time password hashing fallbacks.
   """
   operation(:signin,
     summary: "User sign in",
-    description: "User sign in API",
+    description: "User sign in API. Defends against user enumeration by standardizing failure response timings and preventing specific email lookup failures from leaking.",
     request_body: {"User to trying to login", "application/json", Schemas.User.UserLoginRequest},
     responses: [
       ok: {"Ok", "application/json", Schemas.User.UserToken},
