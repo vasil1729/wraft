@@ -26,11 +26,11 @@ defmodule WraftDocWeb.Api.V1.UserController do
   tags(["User"])
 
   @doc """
-  User Login.
+  User Login. Mitigates timing attacks by standardizing response time via constant-time password hashing fallbacks.
   """
   operation(:signin,
     summary: "User sign in",
-    description: "User sign in API",
+    description: "User sign in API. Defends against user enumeration by standardizing failure response timings and preventing specific email lookup failures from leaking.",
     request_body: {"User to trying to login", "application/json", Schemas.User.UserLoginRequest},
     responses: [
       ok: {"Ok", "application/json", Schemas.User.UserToken},
@@ -40,7 +40,18 @@ defmodule WraftDocWeb.Api.V1.UserController do
 
   @spec signin(Plug.Conn.t(), map) :: Plug.Conn.t()
   def signin(conn, params) do
-    with %User{} = user <- Account.find(params["email"]),
+    # Mitigate timing attack and user enumeration
+    user_lookup_result =
+      case Account.find(params["email"]) do
+        %User{} = user ->
+          user
+
+        _ ->
+          Bcrypt.no_user_verify()
+          {:error, :invalid}
+      end
+
+    with %User{} = user <- user_lookup_result,
          %{user: user, tokens: [access_token: access_token, refresh_token: refresh_token]} <-
            Account.authenticate(%{user: user, password: params["password"]}) do
       render(conn, "sign-in.json",
