@@ -27,6 +27,9 @@ defmodule WraftDocWeb.Api.V1.UserController do
 
   @doc """
   User Login.
+
+  Returns a generic :invalid error (mapped to 404 or 400 depending on the fallback controller)
+  for missing users or invalid passwords to prevent user enumeration via inconsistent responses or timing attacks.
   """
   operation(:signin,
     summary: "User sign in",
