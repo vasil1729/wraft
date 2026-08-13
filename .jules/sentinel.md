@@ -1,0 +1,4 @@
+## 2024-06-25 - [Prevent user enumeration timing attack]
+**Vulnerability:** User enumeration is possible during authentication because the system handles non-existent users (e.g. returning early) differently from existing users (which undergo expensive bcrypt hashing).
+**Learning:** Returning early or placing `Bcrypt.no_user_verify/0` conditionally inside a `with` block's `else` when evaluating the password will still create a timing discrepancy due to short-circuiting.
+**Prevention:** Extract user lookups into a defensive `case` statement prior to the `with` block and evaluate `Bcrypt.no_user_verify/0` directly for the non-existent user path to ensure a slow hashing function is executed unconditionally for both paths, preventing timing attacks. Also map specific error outcomes to generic ones to prevent enumeration based on error messages.
