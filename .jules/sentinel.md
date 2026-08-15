@@ -1,0 +1,7 @@
+## 2024-05-24 - [CRITICAL/HIGH] Fix user enumeration and timing attack in login
+
+**Vulnerability:** The Elixir `with` statement used for user authentication (`Account.find` followed by `Account.authenticate`) did not properly mitigate timing attacks or user enumeration when the user was not found. If the user was not found, the `with` statement short-circuited and `Bcrypt.verify_pass` was never evaluated, revealing via a timing discrepancy whether the user existed. Additionally, `{:error, :invalid_email}` was implicitly returned via `FallbackController` exposing non-existent users.
+
+**Learning:** `Bcrypt.verify_pass/2` or `Bcrypt.no_user_verify()` must always be evaluated regardless of whether the user exists or not, and this needs to be completely separated from the conditional logic in the `with` block. `nil` or `{:error, :invalid_email}` must also map strictly to `{:error, :invalid}` for the login endpoints to prevent enumeration via explicit responses from FallbackController or other routing mechanisms.
+
+**Prevention:** Always extract user lookups (like `Account.find`) from `with` statements into an explicit `case` statement. In the wildcard catch-all (`_ ->`), execute `Bcrypt.no_user_verify()` to mitigate timing attacks, and map the error tuple directly to `{:error, :invalid}` to prevent enumeration. Pass the sanitized result of this `case` statement into the standard `with` block for password evaluation.
