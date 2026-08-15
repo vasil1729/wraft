@@ -34,6 +34,7 @@ defmodule WraftDocWeb.Api.V1.UserController do
     request_body: {"User to trying to login", "application/json", Schemas.User.UserLoginRequest},
     responses: [
       ok: {"Ok", "application/json", Schemas.User.UserToken},
+      not_found: {"Not Found", "application/json", Schemas.Error},
       unprocessable_entity: {"Unprocessable Entity", "application/json", Schemas.Error}
     ]
   )
