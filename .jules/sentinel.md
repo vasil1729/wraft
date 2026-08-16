@@ -1,0 +1,4 @@
+## 2024-06-25 - Prevent User Enumeration Timing Attack in Login
+**Vulnerability:** The login controller used `with` directly with `Account.find` and `Account.authenticate`, so when `Account.find` failed, `Bcrypt.verify_pass` was never run, leaking whether an account existed by timing response differences.
+**Learning:** In Elixir, `with` clauses short-circuit. When performing authentication lookups before password verification, failing to execute a dummy password check (e.g. `Bcrypt.no_user_verify()`) when the user is not found exposes the application to timing-based user enumeration.
+**Prevention:** Always extract the user lookup step into a `case` block before evaluating the password. For non-existent users, explicitly invoke `Bcrypt.no_user_verify()` and return the generic error tuple, preventing timing discrepancies and maintaining FallbackController compatibility.
