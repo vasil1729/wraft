@@ -1,0 +1,7 @@
+## 2024-11-20 - Fix user enumeration and timing attacks in authentication
+
+**Vulnerability:** The `signin` action in `WraftDocWeb.Api.V1.UserController` used a `with` statement that returned specific error tuples (like `{:error, :invalid_email}`) directly to the `FallbackController`, exposing whether a user exists (user enumeration). Furthermore, because `Bcrypt.verify_pass/2` was only called if a user was found, the timing difference between existing and non-existing users created a timing attack vulnerability.
+
+**Learning:** `with` statements in Elixir can leak internal error states to fallback controllers if not explicitly handled. Timing attacks are common when cryptographic functions are conditionally executed based on database lookups. Empty passwords must also be validated *before* user lookups to maintain consistent generic error responses.
+
+**Prevention:** Extract database lookups from `with` statements. Always use a generic `case` statement to handle lookups. For non-existent users, invoke `Bcrypt.no_user_verify/0` to balance execution time and explicitly map the result to a generic `{:error, :invalid}` response. Pre-validate missing or empty passwords and return a consistent generic error (e.g., `{:error, :no_data}`). Explicitly use an `else` block in `with` statements to normalize any escaping error tuples.
