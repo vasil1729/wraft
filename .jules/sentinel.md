@@ -1,0 +1,4 @@
+## 2024-05-18 - Timing Attack Vulnerability in Authentication via Incomplete Pattern Matching
+**Vulnerability:** User enumeration timing vulnerability in `signin/2` and admin `create/2` controllers due to `with` statements failing early on missing users or mismatched properties (e.g. `is_deactivated: false`) before executing `Bcrypt.verify_pass/2`.
+**Learning:** `with` statements that map specific user state checks alongside password verification return early when the user is not found or the state check fails, allowing attackers to measure timing differences and discover registered or deactivated emails.
+**Prevention:** Always extract user lookup out of `with` statements into a `case` block, calling `Bcrypt.no_user_verify()` on failure. Then pass the user result into the `with` block to guarantee `Bcrypt.verify_pass/2` executes regardless of whether the user exists or is deactivated.
