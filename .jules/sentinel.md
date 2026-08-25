@@ -1,0 +1,4 @@
+## 2024-08-25 - Prevent User Enumeration Timing Attack in Login Flow
+**Vulnerability:** The application's `signin` controller logic bypassed password verification when a user was not found by returning `{:error, :invalid_email}` early, allowing attackers to enumerate valid email addresses based on request response times.
+**Learning:** Returning early in an authentication flow when a user doesn't exist creates a timing discrepancy that can be exploited for user enumeration. The execution time will be notably shorter for non-existent users because the expensive password hashing function is skipped.
+**Prevention:** Always ensure a constant-time or computationally equivalent path executes during authentication, regardless of user existence. Use a dummy hashing function (e.g., `Bcrypt.no_user_verify()`) when a user is not found, and map any lookup errors directly to generic authentication failure messages (e.g., `{:error, :invalid}`).
