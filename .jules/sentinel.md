@@ -1,0 +1,4 @@
+## 2024-05-24 - Fix Timing Attack and User Enumeration in UserController
+**Vulnerability:** The signin endpoint was susceptible to timing attacks and user enumeration because Bcrypt.verify_pass/2 was only executed if the user was found. When Account.find/1 failed, it returned {:error, :invalid_email} which leaked user existence.
+**Learning:** Early failures in user lookups skip password verification, creating timing discrepancies. Specific error tuples can be exposed by generic error handlers.
+**Prevention:** Extract user lookups into a case statement. On failure, invoke Bcrypt.no_user_verify() to balance response times and map specific lookup errors to generic tuples like {:error, :invalid}.
