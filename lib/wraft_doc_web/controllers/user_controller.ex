@@ -40,14 +40,38 @@ defmodule WraftDocWeb.Api.V1.UserController do
 
   @spec signin(Plug.Conn.t(), map) :: Plug.Conn.t()
   def signin(conn, params) do
-    with %User{} = user <- Account.find(params["email"]),
-         %{user: user, tokens: [access_token: access_token, refresh_token: refresh_token]} <-
-           Account.authenticate(%{user: user, password: params["password"]}) do
-      render(conn, "sign-in.json",
-        access_token: access_token,
-        refresh_token: refresh_token,
-        user: user
-      )
+    email = Map.get(params, "email")
+    password = Map.get(params, "password")
+
+    # [Security] Validate inputs to prevent errors and ensure generic {:error, :no_data} response
+    if is_nil(email) or email == "" or is_nil(password) or password == "" do
+      {:error, :no_data}
+    else
+      user_lookup =
+        case Account.find(email) do
+          %User{} = user ->
+            user
+
+          _ ->
+            # [Security] Trigger Bcrypt.no_user_verify() and map specific errors to {:error, :invalid}
+            # to prevent timing attacks and user enumeration via error responses.
+            Bcrypt.no_user_verify()
+            {:error, :invalid}
+        end
+
+      with %User{} = user <- user_lookup,
+           %{user: user, tokens: [access_token: access_token, refresh_token: refresh_token]} <-
+             Account.authenticate(%{user: user, password: password}) do
+        render(conn, "sign-in.json",
+          access_token: access_token,
+          refresh_token: refresh_token,
+          user: user
+        )
+      else
+        # [Security] Explicitly return {:error, :invalid} on any authentication failure
+        # to guarantee uniform generic error responses.
+        _ -> {:error, :invalid}
+      end
     end
   end
 
