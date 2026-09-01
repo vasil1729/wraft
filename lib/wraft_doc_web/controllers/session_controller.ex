@@ -13,20 +13,42 @@ defmodule WraftDocWeb.SessionController do
   end
 
   def create(conn, %{"session" => params}) do
-    with %InternalUser{is_deactivated: false} = user <-
-           InternalUsers.get_by_email(params["email"]),
-         true <- Bcrypt.verify_pass(params["password"], user.encrypted_password) do
-      conn
-      |> put_session(:admin_id, user.id)
-      |> put_flash(:info, "Signed in successfully.")
-      |> redirect(to: kaffy_home_path(conn, :index))
-    else
-      %InternalUser{is_deactivated: true} ->
+    # [Security] Prevent timing attacks by explicitly checking users
+    user = InternalUsers.get_by_email(params["email"])
+
+    result =
+      case user do
+        %InternalUser{} ->
+          # Even if deactivated, hash the password to equalize timing
+          if Bcrypt.verify_pass(params["password"], user.encrypted_password) do
+            if user.is_deactivated do
+              {:error, :deactivated}
+            else
+              {:ok, user}
+            end
+          else
+            {:error, :invalid}
+          end
+
+        _ ->
+          # Maintain consistent timing for non-existent users
+          Bcrypt.no_user_verify()
+          {:error, :invalid}
+      end
+
+    case result do
+      {:ok, valid_user} ->
+        conn
+        |> put_session(:admin_id, valid_user.id)
+        |> put_flash(:info, "Signed in successfully.")
+        |> redirect(to: kaffy_home_path(conn, :index))
+
+      {:error, :deactivated} ->
         conn
         |> put_flash(:info, "Your account has been deactivated, please contact support.")
         |> redirect(to: session_path(conn, :new))
 
-      _ ->
+      {:error, :invalid} ->
         conn
         |> put_flash(:error, "Please provide the correct login credentials to login.")
         |> redirect(to: session_path(conn, :new))
