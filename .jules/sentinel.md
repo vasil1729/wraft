@@ -1,0 +1,4 @@
+## 2024-05-15 - Timing Attack in Admin Authentication
+**Vulnerability:** Admin authentication in `WraftDocWeb.SessionController` skipped password hashing for deactivated users and non-existent users, creating a timing attack vulnerability that allows an attacker to enumerate user emails and determine account status.
+**Learning:** In Elixir `with` statements, pattern matching on account status (e.g., `is_deactivated: false`) before the `Bcrypt.verify_pass` step causes early fallthrough to `else`, exposing timing discrepancies.
+**Prevention:** Always extract user lookups into a `case` statement to ensure `Bcrypt.verify_pass/2` or `Bcrypt.no_user_verify/0` is unconditionally executed before any business logic or status checks.
